@@ -1,0 +1,41 @@
+#!/usr/bin/env raku
+use lib $*PROGRAM.parent(2).add('lib').Str;
+use SPOZ2;
+
+#| Parse a .spoz2 file and report what it contains.
+multi MAIN('check', IO() $file) {
+    my $spec = parse-spoz2-file($file);
+    say "system {$spec.system.name} (spoz2 {$spec.format})";
+    say "  {$spec.entries.elems} invariant entries, {$spec.names.elems} names";
+    say "  versions: {$spec.versions.join(', ')}";
+    my @p = $spec.problems;
+    if @p {
+        note "problem: $_" for @p;
+        exit 1;
+    }
+    say "ok";
+}
+
+#| List the invariants that apply to a given version.
+multi MAIN('at', IO() $file, Str $version) {
+    my $spec = parse-spoz2-file($file);
+    my $v = Version.new($version);
+    say "{$spec.system.name} $v";
+    for $spec.invariants-at($v) -> $inv {
+        say "";
+        say "invariant {$inv.name}  ({$inv.range-str})";
+        say $inv.text.indent(2);
+    }
+}
+
+#| Show every historical entry for one invariant name.
+multi MAIN('history', IO() $file, Str $name) {
+    my $spec = parse-spoz2-file($file);
+    my @h = $spec.history($name);
+    note "no invariant named '$name'" and exit 1 unless @h;
+    for @h -> $inv {
+        say "since {$inv.since}" ~ ($inv.until.defined ?? " until {$inv.until}" !! "");
+        say $inv.text.indent(2);
+        say "";
+    }
+}

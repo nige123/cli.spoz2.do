@@ -1,0 +1,32 @@
+spoz2 0.1
+
+# NOW: a tiny personal focus tool.  This file is the example SPOZ2 used
+# to discover the language.  It describes two versions of NOW.
+
+system now
+  A personal focus tool.  A human keeps a list of things they could do;
+  NOW is the one thing they are doing right now.  The point of the tool
+  is to keep NOW honest: singular, current and owned by a person.
+
+invariant one-active-now
+  since 1.0
+  A human may have only one active NOW item at any time.
+  Starting a new NOW item ends the previous one.
+
+invariant now-belongs-to-human
+  since 1.0
+  Every NOW item belongs to exactly one human.
+
+invariant now-expires-at-midnight
+  since 1.1
+  until 2.0
+  An active NOW item is automatically ended at local midnight.
+  Retired in 2.0 without replacement: people working across midnight
+  hated it, and workspaces made it unnecessary.
+
+invariant one-active-now
+  since 2.0
+  A human may have at most one active NOW item per workspace.
+  Version 2.0 introduced workspaces (for example "work" and "home").
+  Within a single workspace the 1.0 rule still holds: starting a new
+  NOW item in a workspace ends the previous one in that workspace.

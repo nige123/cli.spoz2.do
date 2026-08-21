@@ -1,0 +1,71 @@
+use Test;
+use lib 'lib';
+use SPOZ2;
+use SPOZ2::Model;
+
+plan 22;
+
+my $spec = parse-spoz2(q:to/END/);
+    spoz2 0.1
+    system now
+      A focus tool.
+      Second line.
+    invariant one-active-now
+      since 1.0
+      Only one.
+    invariant belongs-to-human
+      since 1.0
+      One owner.
+    invariant expires
+      since 1.1
+      until 2.0
+      Midnight.
+    invariant one-active-now
+      since 2.0
+      One per workspace.
+    END
+
+isa-ok $spec, Spec;
+is $spec.format, v0.1, 'format version';
+is $spec.system.name, 'now', 'system name';
+is $spec.system.text, "A focus tool.\nSecond line.", 'system prose joined by newline';
+is $spec.entries.elems, 4, 'all entries kept, including superseded';
+is $spec.names.join(','), 'one-active-now,belongs-to-human,expires', 'names in first-appearance order';
+is $spec.versions.join(','), '1.0,1.1,2.0', 'versions at which something changes';
+is-deeply $spec.problems, (), 'no structural problems';
+
+is $spec.history('one-active-now')».text.join('|'), 'Only one.|One per workspace.', 'history oldest first';
+
+sub at($v) { $spec.invariants-at(Version.new($v)).map({ .name ~ ' ' ~ .text }).join('|') }
+is at('0.9'), '', 'nothing before 1.0';
+is at('1.0'), 'one-active-now Only one.|belongs-to-human One owner.', 'version 1.0';
+is at('1.1'), 'one-active-now Only one.|belongs-to-human One owner.|expires Midnight.', 'version 1.1 adds expiry';
+is at('1.9'), 'one-active-now Only one.|belongs-to-human One owner.|expires Midnight.', 'version 1.9 unchanged';
+is at('2.0'), 'one-active-now One per workspace.|belongs-to-human One owner.', '2.0 supersedes one, retires another';
+is at('3.5'), 'one-active-now One per workspace.|belongs-to-human One owner.', 'later versions keep governing entry';
+is at('1'),   'one-active-now Only one.|belongs-to-human One owner.', 'version 1 equals 1.0';
+
+my $e = $spec.history('expires')[0];
+is $e.range-str, '1.1 ..^ 2.0', 'range string with until';
+is $spec.history('belongs-to-human')[0].range-str, '1.0 ..', 'open range string';
+
+# --- strictness where precision matters ---------------------------------
+throws-like { parse-spoz2("spoz2 0.1\ninvariant a\n  since 1.0\n  x\n") },
+    Exception, message => /'exactly one'/, 'a system block is required';
+throws-like { parse-spoz2("spoz2 0.1\nsystem s\ninvariant a\n  no since here\n") },
+    Exception, message => /'since'/, 'an invariant needs since';
+throws-like { parse-spoz2("spoz2 0.1\nsystem s\ninvariant a\n  since 1.0\n  since 1.1\n") },
+    Exception, message => /'duplicate'/, 'duplicate field is rejected';
+
+my $bad = parse-spoz2(q:to/END/);
+    spoz2 0.1
+    system s
+    invariant a
+      since 2.0
+      until 1.0
+    invariant b
+      since 1.0
+    invariant b
+      since 1.0
+    END
+is $bad.problems.elems, 2, 'problems: until before since, and duplicate since for one name';

@@ -1,0 +1,22 @@
+use Test;
+use lib 'lib';
+use SPOZ2;
+
+plan 8;
+
+# Every shipped .spoz2 file must parse and be well formed.
+for <examples/now.spoz2 spoz2.spoz2> -> $file {
+    my $spec = parse-spoz2-file($file);
+    ok $spec, "$file parses";
+    is-deeply $spec.problems, (), "$file has no problems";
+}
+
+# The NOW example demonstrates intent changing between versions.
+my $now = parse-spoz2-file('examples/now.spoz2');
+is $now.history('one-active-now').elems, 2, 'one-active-now has two historical entries';
+like $now.invariants-at(v1.0).first(*.name eq 'one-active-now').text,
+    /'only one active NOW item at any time'/, '1.0 text governs 1.0';
+like $now.invariants-at(v2.0).first(*.name eq 'one-active-now').text,
+    /'per workspace'/, '2.0 text governs 2.0';
+nok $now.invariants-at(v2.0).first(*.name eq 'now-expires-at-midnight'),
+    'retired invariant does not apply at 2.0';

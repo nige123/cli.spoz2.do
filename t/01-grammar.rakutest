@@ -1,0 +1,34 @@
+use Test;
+use lib 'lib';
+use SPOZ2::Grammar;
+
+plan 12;
+
+ok SPOZ2::Grammar.parse("spoz2 0.1\nsystem x\n  hello\n"), 'minimal file parses';
+ok SPOZ2::Grammar.parse("spoz2 0.1\nsystem x\n  hello"), 'no trailing newline is fine';
+ok SPOZ2::Grammar.parse("\n# c\nspoz2 0.1\n\n# c\nsystem x\n  # c\n  hello\n\n"),
+    'blank and comment lines are allowed anywhere';
+
+my $m = SPOZ2::Grammar.parse(q:to/END/);
+    spoz2 0.1
+    system now
+      one line
+      two line
+    invariant a-b
+      since 1.0
+      until 2.0
+      Some prose.
+      since this is not a field, the word since is followed by more text
+    END
+ok $m, 'system + invariant parse';
+is $m<block>.elems, 2, 'two blocks';
+is ~$m<block>[0]<system><name>, 'now', 'system name';
+is $m<block>[0]<system><body><prose>».<text>.join('|'), 'one line|two line', 'prose lines';
+is ~$m<block>[1]<invariant><name>, 'a-b', 'invariant name with hyphen';
+is $m<block>[1]<invariant><body><field>».<key>.join(','), 'since,until', 'fields in order';
+is $m<block>[1]<invariant><body><field>[1]<value>, '2.0', 'field value';
+is $m<block>[1]<invariant><body><prose>.elems, 2,
+    'a prose line starting with a field keyword followed by prose is still prose';
+
+throws-like { SPOZ2::Grammar.parse("spoz2 0.1\nsystem x\nstray line\n") },
+    Exception, message => /'line 3'/, 'column-0 non-block line is an error with a line number';

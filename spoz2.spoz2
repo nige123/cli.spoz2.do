@@ -1,0 +1,34 @@
+spoz2 0.1
+
+# SPOZ2 described in SPOZ2.  This file is the authoritative statement of
+# what the SPOZ2 tooling is supposed to do, and it is parsed by the tests.
+
+system spoz2
+  SPOZ2 describes what software is supposed to be doing, in a form humans
+  and AI can both read.  A description is made of invariants bound to
+  version ranges, and it evolves as the software evolves.  It describes
+  intended behaviour and constraints, not the current implementation.
+
+invariant history-is-never-deleted
+  since 0.1
+  When an invariant changes, the old entry stays in the file and remains
+  authoritative for the versions it applied to.  Tooling must never drop,
+  merge or rewrite historical entries.
+
+invariant latest-since-governs
+  since 0.1
+  For a given invariant name and software version V, the entry that
+  governs is the one with the greatest "since" not after V, unless that
+  entry has an "until" at or before V, in which case nothing governs.
+
+invariant prose-is-authoritative-intent
+  since 0.1
+  The human-language text of an invariant is its meaning.  The structured
+  parts (name, since, until) exist only to give it identity and scope.
+  Tooling must not require the prose to be machine executable.
+
+invariant strict-identity-loose-meaning
+  since 0.1
+  Names and versions are parsed strictly and validated.  Everything else is
+  free text.  New structure is added only when real use shows that
+  precision there is worth more than flexibility.
