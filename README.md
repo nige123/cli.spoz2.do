@@ -80,6 +80,8 @@ lib/SPOZ2/Model.rakumod     Spec / System / Invariant, and "what applies at V?"
 lib/SPOZ2.rakumod           parse-spoz2 / parse-spoz2-file
 bin/spoz2                   tiny CLI: check | at | history
 examples/now.spoz2          the first example: a focus tool across two versions
+examples/invoicing.spoz2    a non-software example: the rules governing a company's invoices,
+                            versioned by date (2020.07.15) as the law and contracts change
 spoz2.spoz2                 SPOZ2 describing itself
 t/                          tests
 ```

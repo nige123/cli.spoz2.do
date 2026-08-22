@@ -1,0 +1,43 @@
+spoz2 0.1
+
+# INVOICING: a non-software example.  The "system" is the set of rules that
+# govern every invoice a small company issues, whatever produces the invoice
+# (a template, a script, an accounts package, a person).  It shows that
+# SPOZ2 is not specific to code: anything with an implementation and an
+# intent can have a .spoz2.
+#
+# Versions here are dates written as dotted versions (2020.07.15), because
+# the rules change when the law or the contract changes, not when software
+# ships.  The retired reduced-rate rule stays in the file: an invoice from
+# August 2020 is still governed by it when an auditor reads it in 2026.
+
+system invoicing
+  Invoices issued by Acme Ltd to its customers, in any channel.  An invoice
+  is a claim for payment; once issued it is never edited, only credited.
+
+invariant sequential-numbers
+  since 2019.04.01
+  Invoice numbers are sequential with no gaps.  A cancelled invoice keeps its
+  number and is reversed by a credit note; it is never deleted.
+
+invariant vat-at-tax-point-rate
+  since 2019.04.01
+  VAT is charged at the rate in force on the tax point date, not the issue
+  date or the payment date.
+
+invariant hospitality-reduced-rate
+  since 2020.07.15
+  until 2022.04.01
+  Hospitality supplies are charged at the temporary reduced rate: 5% until
+  2021-09-30, then 12.5%.  Retired when the standard rate resumed on
+  2022-04-01.  Invoices from that period remain correct at the reduced rate.
+
+invariant terms-from-contract
+  since 2021.01.01
+  Payment terms are 30 days from the invoice date unless the customer's
+  contract states otherwise; the contract wins.
+
+invariant contract-currency
+  since 2021.01.01
+  Amounts are in the currency named in the customer's contract.  If the
+  contract is silent, GBP.
