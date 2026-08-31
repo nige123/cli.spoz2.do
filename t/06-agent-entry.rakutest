@@ -1,0 +1,37 @@
+use Test;
+use SPOZ2;
+
+# parse-agent-entry: the fixed plain shape an agent replies with.
+# The LLM call itself is not tested here — only that its reply parses
+# and that sloppy-but-recoverable replies are tolerated.
+
+my %e = parse-agent-entry(q:to/END/);
+    name: one-active-now
+    since: 3.0
+    prose: A human may focus one workspace at a time.
+    Within the focused workspace the 1.0 rule holds.
+    END
+is %e<name>, 'one-active-now', 'name parsed';
+is %e<since>, '3.0', 'since parsed';
+is %e<prose>, "A human may focus one workspace at a time.\nWithin the focused workspace the 1.0 rule holds.",
+    'multi-line prose parsed';
+
+%e = parse-agent-entry(qq:to/END/);
+    Here is the entry you asked for:
+    ```
+    name: fresh-rule
+    since: 1.2
+    prose: One line only.
+    ```
+    END
+is %e<name>, 'fresh-rule', 'chatter before name: is tolerated';
+is %e<prose>, 'One line only.', 'code fences are stripped';
+
+throws-like { parse-agent-entry("since: 1.0\nprose: x") },
+    Exception, message => /'no' .* 'name'/, 'missing name refused';
+throws-like { parse-agent-entry("name: x\nprose: y") },
+    Exception, message => /'no' .* 'since'/, 'missing since refused';
+throws-like { parse-agent-entry("name: x\nsince: 1.0") },
+    Exception, message => /'no' .* 'prose'/, 'missing prose refused';
+
+done-testing;

@@ -1,0 +1,80 @@
+use Test;
+use SPOZ2;
+use SPOZ2::Model;
+
+# guard-history: a new revision of a spec may only add to history.
+# Allowed:  new entries, retiring an entry (adding until), appending prose.
+# Refused:  removing entries, rewriting prose, changing or removing until.
+
+my $base = q:to/END/;
+    spoz2 0.1
+
+    system demo
+      A demo system.
+
+    invariant one
+      since 1.0
+      Rule one as first stated.
+
+    invariant two
+      since 1.0
+      until 2.0
+      Rule two, already retired.
+    END
+
+sub spec(Str $text) { parse-spoz2($text) }
+
+my $old = spec($base);
+
+# --- legal evolutions ---------------------------------------------------
+
+is-deeply guard-history($old, spec($base)), (),
+    'identical spec passes';
+
+my $with-new-entry = $base ~ q:to/END/;
+    invariant one
+      since 2.0
+      Rule one, restated for 2.0.
+    END
+is-deeply guard-history($old, spec($with-new-entry)), (),
+    'adding a new entry passes';
+
+my $retired = $base.subst("invariant one\n  since 1.0\n",
+                          "invariant one\n  since 1.0\n  until 3.0\n");
+is-deeply guard-history($old, spec($retired)), (),
+    'retiring an entry (adding until) passes';
+
+my $appended = $base.subst("Rule one as first stated.\n",
+                           "Rule one as first stated.\n  Retired in 3.0: no longer needed.\n");
+is-deeply guard-history($old, spec($appended)), (),
+    'appending prose to an entry passes';
+
+# --- violations ---------------------------------------------------------
+
+my $removed = $base.subst(/'invariant two' .* $/, '');
+my @v = guard-history($old, spec($removed));
+is @v.elems, 1, 'removing an entry is one violation';
+like @v[0], /'entry removed' .* 'two'/, 'removal names the entry';
+
+my $rewritten = $base.subst('as first stated', 'reworded sneakily');
+@v = guard-history($old, spec($rewritten));
+like @v[0], /'prose rewritten' .* 'one'/, 'rewriting prose is a violation';
+
+my $moved-retirement = $base.subst('until 2.0', 'until 2.5');
+@v = guard-history($old, spec($moved-retirement));
+like @v[0], /'retirement changed' .* 'two'/, 'changing until is a violation';
+
+my $unretired = $base.subst("  until 2.0\n", '');
+@v = guard-history($old, spec($unretired));
+like @v[0], /'retirement removed' .* 'two'/, 'removing until is a violation';
+
+my $renamed = $base.subst('system demo', 'system demo2');
+@v = guard-history($old, spec($renamed));
+like @v[0], /'system renamed'/, 'renaming the system is a violation';
+
+# changing since is identity change: reads as a removal
+my $resince = $base.subst("invariant one\n  since 1.0", "invariant one\n  since 1.1");
+@v = guard-history($old, spec($resince));
+like @v[0], /'entry removed' .* 'one'/, 'changing since reads as removing the old entry';
+
+done-testing;

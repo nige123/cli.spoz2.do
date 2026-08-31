@@ -14,6 +14,10 @@ invariant history-is-never-deleted
   When an invariant changes, the old entry stays in the file and remains
   authoritative for the versions it applied to.  Tooling must never drop,
   merge or rewrite historical entries.
+  Enforced mechanically by "spoz2 guard": between two revisions of a file,
+  entries may be added, an entry may gain an "until" (retirement), and
+  prose may be appended — but existing entries are never altered or
+  removed.  This sentence was itself added by appending, under guard.
 
 invariant latest-since-governs
   since 0.1

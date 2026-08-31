@@ -102,7 +102,21 @@ bin/spoz2 at examples/now.spoz2 2.0
 
 # how has one invariant changed over time?
 bin/spoz2 history examples/now.spoz2 one-active-now
+
+# add a new invariant entry (same name + later since supersedes; old entry stays)
+bin/spoz2 add examples/now.spoz2 one-active-now 3.0 "The new rule, as prose."
+bin/spoz2 add examples/now.spoz2 one-active-now 3.0 < prose.txt   # prose from stdin
+
+# has history been rewritten?  (exit 1 if so — suitable for CI / pre-commit)
+bin/spoz2 guard old.spoz2 new.spoz2   # compare two revisions
+bin/spoz2 guard spoz2.spoz2           # compare working file against git HEAD
 ```
+
+`guard` enforces "do not rewrite history" mechanically.  Between two
+revisions of a file, entries may be added, an entry may gain an `until`
+(retirement), and prose may be appended — but an existing entry's prose,
+`until`, or presence may never change.  Anything a model or human rewrites
+in place is reported and the check fails.
 
 From Raku:
 

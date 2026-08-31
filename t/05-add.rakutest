@@ -1,0 +1,63 @@
+use Test;
+use SPOZ2;
+use SPOZ2::Model;
+
+# add-invariant: the one write operation.  It appends a new entry to the
+# spec text, and refuses anything the guard or problems() would reject.
+
+my $base = q:to/END/;
+    spoz2 0.1
+
+    system demo
+      A demo system.
+
+    invariant one
+      since 1.0
+      Rule one as first stated.
+    END
+
+# --- adding a brand new invariant ---------------------------------------
+
+my $new-text = add-invariant($base, name => 'two', since => '1.0',
+                             prose => 'Rule two.');
+my $spec = parse-spoz2($new-text);
+is $spec.names.elems, 2, 'new invariant name appears';
+is $spec.history('two').tail.text, 'Rule two.', 'prose lands in the entry';
+is-deeply guard-history(parse-spoz2($base), $spec), (),
+    'the result is a legal evolution of the original';
+
+# --- superseding an existing invariant ----------------------------------
+
+my $superseded = add-invariant($base, name => 'one', since => '2.0',
+                               prose => 'Rule one, restated for 2.0.');
+$spec = parse-spoz2($superseded);
+is $spec.history('one').elems, 2, 'both entries kept';
+is $spec.invariants-at(v2.0).head.text, 'Rule one, restated for 2.0.',
+    'new entry governs at 2.0';
+is $spec.invariants-at(v1.5).head.text, 'Rule one as first stated.',
+    'old entry still governs at 1.5';
+
+# --- prose layout --------------------------------------------------------
+
+my $long = add-invariant($base, name => 'wordy', since => '1.0',
+    prose => 'word ' x 40);
+ok parse-spoz2($long), 'long prose still parses';
+ok $long.lines.grep(*.chars > 73) == 0, 'long prose is wrapped';
+
+my $multiline = add-invariant($base, name => 'multi', since => '1.0',
+    prose => "First line.\nSecond line.");
+is parse-spoz2($multiline).history('multi').tail.text,
+    "First line.\nSecond line.", 'existing line breaks are kept';
+
+# --- refusals ------------------------------------------------------------
+
+throws-like { add-invariant($base, name => 'bad name', since => '1.0', prose => 'x') },
+    Exception, message => /'invalid invariant name'/, 'bad name refused';
+throws-like { add-invariant($base, name => 'x', since => 'v1', prose => 'x') },
+    Exception, message => /'invalid version'/, 'bad version refused';
+throws-like { add-invariant($base, name => 'x', since => '1.0', prose => '  ') },
+    Exception, message => /'needs prose'/, 'empty prose refused';
+throws-like { add-invariant($base, name => 'one', since => '1.0', prose => 'dup') },
+    Exception, message => /'two entries with since'/, 'duplicate name+since refused';
+
+done-testing;

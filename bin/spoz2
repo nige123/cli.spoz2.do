@@ -1,6 +1,10 @@
 #!/usr/bin/env raku
 use lib $*PROGRAM.parent(2).add('lib').Str;
 use SPOZ2;
+use SPOZ2::Model;
+
+# allow flags after the subcommand, e.g. spoz2 add --agent FILE ...
+my %*SUB-MAIN-OPTS = :named-anywhere;
 
 #| Parse a .spoz2 file and report what it contains.
 multi MAIN('check', IO() $file) {
@@ -26,6 +30,98 @@ multi MAIN('at', IO() $file, Str $version) {
         say "invariant {$inv.name}  ({$inv.range-str})";
         say $inv.text.indent(2);
     }
+}
+
+#| Add a new invariant entry.  Same name + later since supersedes the
+#| old entry; the old entry stays.  Prose comes from the arguments, or
+#| from stdin when none are given.
+multi MAIN('add', IO() $file, Str $name, Str $since, *@prose) {
+    my $prose = @prose ?? @prose.join(' ') !! $*IN.slurp;
+    my $new-text = add-invariant($file.slurp, :$name, :$since, :$prose);
+    $file.spurt($new-text);
+
+    my @h = parse-spoz2($new-text).history($name);
+    if @h > 1 and @h.tail.since != Version.new($since) {
+        note "note: '$name' has a later entry (since {@h.tail.since}) — this one is historical backfill";
+    }
+    say "added invariant $name since $since to $file"
+      ~ (@h > 1 ?? " (entry {@h.elems} for this name)" !! "");
+}
+
+#| Agent-assisted add: describe the change of intent in plain words and
+#| an LLM drafts the entry — name (supersede or new), since, prose.
+#| The draft goes through the same validated add as a hand-written one,
+#| so the agent cannot produce a malformed entry or rewrite history.
+multi MAIN('add', IO() $file, *@description, Bool :$agent!) {
+    my $description = @description ?? @description.join(' ') !! $*IN.slurp;
+    die "spoz2 add --agent: describe the change of intent" unless $description.trim;
+
+    my $prompt = q:to/END/ ~ "\n---\n{$file.slurp}---\n\nThe change of intent, in the maintainer's words:\n$description\n";
+        You are updating a SPOZ2 specification file.  A SPOZ2 file records what
+        a system is supposed to do, as named invariants bound to version
+        ranges.  History is append-only: a change of intent becomes a NEW
+        entry.  Reuse an existing invariant name if this changes an existing
+        rule (a later "since" supersedes it); invent a new kebab-case name for
+        a brand-new rule.  The prose must state the whole rule as it now
+        stands (self-contained, not a diff), in the same voice as the file,
+        with a short why when the maintainer gives one.  If the maintainer
+        does not say which version the change starts at, choose the most
+        plausible next version given those already in the file.
+
+        Reply with EXACTLY this shape and nothing else:
+        name: <invariant-name>
+        since: <version>
+        prose: <first line of prose>
+        <further lines of prose, if any>
+
+        The current file:
+        END
+
+    my $cmd = %*ENV<SPOZ2_AGENT_CMD> // 'claude -p';
+    note "asking agent ($cmd) to draft the entry ...";
+    my $proc = run '/bin/sh', '-c', $cmd, :in, :out;
+    $proc.in.print($prompt);
+    $proc.in.close;
+    my $reply = $proc.out.slurp;
+    die "spoz2 add --agent: agent command failed ($cmd)" if $proc.exitcode != 0;
+
+    my %entry = parse-agent-entry($reply);
+    my $new-text = add-invariant($file.slurp, |%entry);
+    $file.spurt($new-text);
+
+    say "added invariant %entry<name> since %entry<since> to $file (agent-drafted):";
+    say '';
+    say "invariant %entry<name>";
+    say "  since %entry<since>";
+    print %entry<prose>.lines.map({ "  $_\n" }).join;
+}
+
+#| Check that $new-file only appends to the history in $old-file.
+multi MAIN('guard', IO() $old-file, IO() $new-file) {
+    guard(parse-spoz2-file($old-file), parse-spoz2-file($new-file));
+}
+
+#| Check the working file against its last committed version (git HEAD).
+multi MAIN('guard', IO() $file) {
+    my $dir  = $file.parent.Str;
+    my $show = run 'git', '-C', $dir, 'show', "HEAD:./{$file.basename}", :out, :err;
+    my $old-text = $show.out.slurp;
+    $show.err.slurp;
+    if $show.exitcode != 0 {
+        say "nothing committed to guard against — ok";
+        exit 0;
+    }
+    guard(parse-spoz2($old-text), parse-spoz2-file($file));
+}
+
+sub guard($old, $new) {
+    my @violations = guard-history($old, $new);
+    if @violations {
+        note "history rewritten: $_" for @violations;
+        exit 1;
+    }
+    my $added = $new.entries.elems - $old.entries.elems;
+    say "ok: history preserved ({$old.entries.elems} entries kept, $added added)";
 }
 
 #| Show every historical entry for one invariant name.

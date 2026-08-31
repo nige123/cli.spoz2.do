@@ -80,3 +80,40 @@ class Spec is export {
         @problems.List;
     }
 }
+
+#| The append-only history check.  $new is a legal evolution of $old
+#| when every entry in $old survives unchanged: an entry (identified by
+#| name + since) may gain an `until` it did not have (retirement) and
+#| may have prose appended, but existing prose, an existing `until`,
+#| and the entry itself may never be altered or removed.
+#| Returns a list of violations; empty means history is preserved.
+sub guard-history(Spec $old, Spec $new --> List) is export {
+    my @violations;
+
+    if $old.system.name ne $new.system.name {
+        @violations.push: "system renamed: '{$old.system.name}' is now '{$new.system.name}'";
+    }
+
+    my %new-entry = $new.entries.map({ ("{.name} @ {.since}") => $_ });
+
+    for $old.entries -> $o {
+        my $n = %new-entry{"{$o.name} @ {$o.since}"};
+        without $n {
+            @violations.push: "entry removed: invariant {$o.name} since {$o.since}";
+            next;
+        }
+        if $o.until.defined {
+            if !$n.until.defined {
+                @violations.push: "retirement removed: invariant {$o.name} since {$o.since} lost until {$o.until}";
+            }
+            elsif $n.until != $o.until {
+                @violations.push: "retirement changed: invariant {$o.name} since {$o.since} until {$o.until} is now until {$n.until}";
+            }
+        }
+        unless $o.text eq '' or $n.text eq $o.text or $n.text.starts-with($o.text ~ "\n") {
+            @violations.push: "prose rewritten: invariant {$o.name} since {$o.since} (existing prose may only be appended to)";
+        }
+    }
+
+    @violations.List;
+}
