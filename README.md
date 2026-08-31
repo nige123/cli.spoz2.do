@@ -137,7 +137,7 @@ bin/spoz2 diff examples/now.spoz2 1.1 2.0
 # An entry whose `since` is ahead of the current version IS the roadmap;
 # agents implement toward it (current version given, or detected from
 # the file's directory: package metadata / git tags)
-bin/spoz2 roadmap examples/cra.spoz2 2026.08.31
+bin/spoz2 roadmap examples/cra.spoz2 today
 
 # create <name>.spoz2 in a codebase (system name + detected version +
 # conventions; an agent or human then writes the invariants from the code)
