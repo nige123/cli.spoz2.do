@@ -71,6 +71,23 @@ than the flexibility it removes.
 The syntax is young and expected to change; the format line (`spoz2 0.1`)
 exists so that it can.
 
+## Tested against real agents
+
+The AI-readability claims are exercised, not assumed:
+
+- An LLM given a `.spoz2` **cold** — no docs, no instructions about the
+  format — recorded a change of intent by appending a superseding entry and
+  left the old entry untouched, reasoning from the file's own conventions.
+- `spoz2 add --agent` turns a plain-words description into a drafted entry
+  (name, since, self-contained prose); the draft passes through the same
+  validated write path as a hand-written one, so a careless model can fail
+  loudly but cannot corrupt the file.
+- An agent told only "the `.spoz2` is the authority, a release is being
+  prepared" found the one divergence between spec and code, changed exactly
+  that, and shipped the release bookkeeping and a test alongside.
+- `spoz2 guard` makes rewriting history a mechanical failure, not a matter
+  of model discipline.
+
 ## Files
 
 ```text
