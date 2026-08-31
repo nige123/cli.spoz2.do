@@ -159,6 +159,33 @@ sub detect-version(IO::Path $dir) {
     Nil;
 }
 
+#| Future intent: entries stated but not yet governing at the current
+#| version — the development spine.  CURRENT is taken from the argument,
+#| or detected from the file's directory (package metadata / git tags).
+multi MAIN('roadmap', Str $file, Str $current?) {
+    my $spec = parse-spoz2-file($file);
+    my $from = $current
+            // detect-version($file.IO.parent)
+            // die "spoz2 roadmap: cannot detect the current version from {$file.IO.parent} — pass it: spoz2 roadmap FILE VERSION";
+    my $v = Version.new($from);
+    my @up = $spec.upcoming($v);
+    say "{$spec.system.name}: roadmap from $v";
+    unless @up {
+        say "  none — no stated intent beyond $v";
+        exit 0;
+    }
+    my $group = '';
+    for @up -> $i {
+        if ~$i.since ne $group {
+            say "\nfrom {$i.since}:";
+            $group = ~$i.since;
+        }
+        my $kind = $spec.history($i.name).first(*.since < $i.since) ?? 'supersedes' !! 'new';
+        say "  invariant {$i.name}  ($kind)";
+        say $i.text.indent(4);
+    }
+}
+
 #| Check that $new-file only appends to the history in $old-file.
 multi MAIN('guard', Str $old-file, Str $new-file) {
     guard(parse-spoz2-file($old-file), parse-spoz2-file($new-file));

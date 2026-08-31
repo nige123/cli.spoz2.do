@@ -133,6 +133,12 @@ bin/spoz2 retire examples/now.spoz2 now-expires-at-midnight 2.0 "Retired in 2.0:
 # what changed in intent between two versions?
 bin/spoz2 diff examples/now.spoz2 1.1 2.0
 
+# future intent: stated but not yet governing — the development spine.
+# An entry whose `since` is ahead of the current version IS the roadmap;
+# agents implement toward it (current version given, or detected from
+# the file's directory: package metadata / git tags)
+bin/spoz2 roadmap examples/cra.spoz2 2026.08.31
+
 # create <name>.spoz2 in a codebase (system name + detected version +
 # conventions; an agent or human then writes the invariants from the code)
 bin/spoz2 init ~/src/some-project      # or just: bin/spoz2 init

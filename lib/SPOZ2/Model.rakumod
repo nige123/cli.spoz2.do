@@ -78,6 +78,12 @@ class Spec is export {
             same    => @names.grep({ %at-a{$_}:exists and %at-a{$_} === %at-b{$_} }).List;
     }
 
+    #| Entries whose since is after $v: intent already stated but not
+    #| yet governing — the roadmap as seen from version $v.
+    method upcoming(Version $v --> Seq) {
+        @!entries.grep(*.since > $v).sort(*.since)
+    }
+
     #| Structural checks that the grammar cannot express.
     #| Returns a list of problems; empty means the spec is well formed.
     method problems(--> List) {

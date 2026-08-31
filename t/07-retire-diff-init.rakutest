@@ -61,6 +61,14 @@ is %c<added>».name.sort, ('one', 'two'), 'first version adds both';
 %c = parse-spoz2($retired).changes(v1.0, v1.5);
 is %c<same>.sort, ('one', 'two'), 'no change between quiet versions';
 
+# --- Spec.upcoming (the roadmap view) ------------------------------------
+
+my $road = parse-spoz2($retired);
+is $road.upcoming(v1.5)».name, ('one',),
+    'the 2.0 supersession is the roadmap seen from 1.5';
+is ~$road.upcoming(v1.5).head.since, '2.0', 'upcoming entry keeps its since';
+is $road.upcoming(v2.0).elems, 0, 'nothing upcoming at the latest since';
+
 # --- init-scaffold ----------------------------------------------------
 
 my $scaffold = init-scaffold(name => 'jmp.nigelhamilton.com', version => '52');
