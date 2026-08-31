@@ -4,8 +4,11 @@
 AI can both understand.**
 
 A `.spoz2` file sits beside a codebase and states the system's intended
-behaviour as named, version-bound **invariants**.  It evolves with the
-software, and it keeps its own history.
+behaviour as named, version-bound **invariants**: what the software was
+supposed to do in the past, is supposed to do now, and is supposed to do
+next.  It keeps its own history, it helps shape future changes, and it
+outlives the implementation — code gets rewritten, ported and replaced;
+the record of intent carries on.
 
 ## Why it exists
 
