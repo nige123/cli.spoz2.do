@@ -155,6 +155,9 @@ bin/spoz2 roadmap examples/cra.spoz2 today
 # create <name>.spoz2 in a codebase (system name + detected version +
 # conventions; an agent or human then writes the invariants from the code)
 bin/spoz2 init ~/src/some-project      # or just: bin/spoz2 init
+bin/spoz2 init --agent ~/src/some-project   # an LLM distills real invariants
+                                            # from README/changelog/layout;
+                                            # validated before writing, review it
 
 # has history been rewritten?  (exit 1 if so — suitable for CI / pre-commit)
 bin/spoz2 guard old.spoz2 new.spoz2   # compare two revisions

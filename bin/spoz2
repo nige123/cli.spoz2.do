@@ -170,6 +170,81 @@ multi MAIN('init', Str $dir = '.') {
     note "next: an agent or human reads the code and writes the invariants.";
 }
 
+#| Agent-assisted init: an LLM reads the codebase's own account of
+#| itself (README, changelog, file layout) and completes the scaffold
+#| into a first real spec — system prose plus starter invariants.  The
+#| draft must parse clean with no problems before it is written, and
+#| the maintainer reviews it: only they know intent.
+multi MAIN('init', Str $dir = '.', Bool :$agent!) {
+    die "spoz2 init: '$dir' is not a directory" unless $dir.IO.d;
+    my $name    = $dir.IO.absolute.IO.basename;
+    my $version = detect-version($dir.IO) // '0.1';
+    my $target  = $dir.IO.add(sanitise-system-name($name) ~ '.spoz2');
+    die "spoz2 init: $target already exists" if $target.e;
+
+    my $prompt = qq:to/END/ ~ init-scaffold(:$name, :$version) ~ "\nEvidence from the codebase:\n" ~ gather-context($dir.IO);
+        Complete the SPOZ2 scaffold below into the first real specification
+        for the codebase whose evidence follows it.  Keep the format line
+        and the conventions comment.  Replace the TODO system prose with
+        what the system is FOR, in a few plain sentences.  Then write 3 to
+        7 invariants, each "since $version": the rules someone would be
+        upset to see silently broken, as self-contained prose.  State
+        intent (what must hold, and why when the evidence says), never
+        implementation detail.  Only state rules the evidence actually
+        supports — fewer good invariants beat many guessed ones.  Reply
+        with ONLY the completed file content: no fences, no commentary.
+
+        The scaffold:
+        END
+
+    my $cmd = %*ENV<SPOZ2_AGENT_CMD> // 'claude -p';
+    note "asking agent ($cmd) to distill $dir ...";
+    my $proc = run '/bin/sh', '-c', $cmd, :in, :out;
+    $proc.in.print($prompt);
+    $proc.in.close;
+    my $reply = $proc.out.slurp;
+    die "spoz2 init --agent: agent command failed ($cmd)" if $proc.exitcode != 0;
+
+    # tolerate fences/chatter: the file starts at its format line
+    my @lines = $reply.lines.grep({ !.starts-with('```') });
+    my $start = @lines.first(*.match(/^ 'spoz2' \h+ \d /), :k)
+        // die "spoz2 init --agent: no 'spoz2 <version>' format line in the reply:\n$reply";
+    my $text = @lines[$start .. *].join("\n") ~ "\n";
+
+    my $spec = parse-spoz2($text);
+    if $spec.problems -> @p {
+        die "spoz2 init --agent: draft has problems — { @p.join('; ') }";
+    }
+    die "spoz2 init --agent: draft has no invariants — refusing to write an empty spec"
+        unless $spec.entries;
+
+    $target.spurt($text);
+    say "created $target (version $version, {$spec.entries.elems} invariants, agent-drafted)";
+    note "review it — the draft states intent, and only the maintainer knows intent.";
+}
+
+#| Bounded evidence for the distilling agent: the codebase's own account
+#| of itself, never the whole tree.
+sub gather-context(IO::Path $dir --> Str) {
+    my @parts;
+    for <README.md README.txt README> -> $f {
+        next unless $dir.add($f).e;
+        @parts.push: "--- $f (head) ---\n" ~ $dir.add($f).slurp.lines.head(80).join("\n");
+        last;
+    }
+    for <CHANGES.md CHANGELOG.md Changes> -> $f {
+        next unless $dir.add($f).e;
+        @parts.push: "--- $f (head) ---\n" ~ $dir.add($f).slurp.lines.head(40).join("\n");
+        last;
+    }
+    my $find = run 'find', $dir.Str, '-maxdepth', '3', '-type', 'f',
+                   '-not', '-path', '*/.git/*', '-not', '-path', '*/node_modules/*',
+                   '-not', '-path', '*/.precomp/*', :out, :err;
+    my @files = $find.out.slurp.lines.map(*.subst($dir.Str ~ '/', '')).sort.head(60);
+    @parts.push: "--- file layout (up to 60) ---\n" ~ @files.join("\n");
+    @parts.join("\n\n");
+}
+
 #| Current version of a codebase, from package metadata or git tags.
 sub detect-version(IO::Path $dir) {
     for <META6.json package.json> -> $f {
