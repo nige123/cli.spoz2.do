@@ -36,3 +36,11 @@ invariant strict-identity-loose-meaning
   Names and versions are parsed strictly and validated.  Everything else is
   free text.  New structure is added only when real use shows that
   precision there is worth more than flexibility.
+
+invariant future-intent-is-roadmap
+  since 0.1
+  An entry whose since is ahead of the system's current version is
+  stated intent that does not yet govern: the roadmap. Tooling presents
+  it (spoz2 roadmap) and agents implement toward it. Completing a
+  roadmap item changes the code, never the entry - the entry simply
+  begins to govern when its version ships.
