@@ -61,16 +61,16 @@ is %c<added>».name.sort, ('one', 'two'), 'first version adds both';
 %c = parse-spoz2($retired).changes(v1.0, v1.5);
 is %c<same>.sort, ('one', 'two'), 'no change between quiet versions';
 
-# --- distill-scaffold ----------------------------------------------------
+# --- init-scaffold ----------------------------------------------------
 
-my $scaffold = distill-scaffold(name => 'jmp.nigelhamilton.com', version => '52');
+my $scaffold = init-scaffold(name => 'jmp.nigelhamilton.com', version => '52');
 my $s = parse-spoz2($scaffold);
 is $s.system.name, 'jmp-nigelhamilton-com', 'system name sanitised';
 like $scaffold, /'since 52'/, 'version lands in the TODO guidance';
 like $scaffold, /'append-only'/, 'conventions preamble present';
 is $s.entries.elems, 0, 'no invariants yet — that is the point';
 
-throws-like { distill-scaffold(name => '...', version => '1.0') },
+throws-like { init-scaffold(name => '...', version => '1.0') },
     Exception, message => /'cannot make a system name'/, 'unusable name refused';
 
 done-testing;

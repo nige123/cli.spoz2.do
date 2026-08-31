@@ -130,17 +130,19 @@ multi MAIN('diff', Str $file, Str $v1, Str $v2) {
     say "\nno intent changes" unless %c<added> or %c<retired> or %c<changed>;
 }
 
-#| Print a starter .spoz2 scaffold for a codebase: system name from the
-#| directory, current version detected from its metadata or git tags.
-#| Writing the invariants — the judgement half — is left to an agent or
-#| human, as the scaffold's TODO comments instruct.
-multi MAIN('distill', Str $dir) {
-    die "spoz2 distill: '$dir' is not a directory" unless $dir.IO.d;
+#| Create DIR/<name>.spoz2, a starter scaffold for a codebase: system
+#| name from the directory, current version detected from its metadata
+#| or git tags.  Writing the invariants — the judgement half — is left
+#| to an agent or human, as the scaffold's TODO comments instruct.
+multi MAIN('init', Str $dir = '.') {
+    die "spoz2 init: '$dir' is not a directory" unless $dir.IO.d;
     my $name    = $dir.IO.absolute.IO.basename;
     my $version = detect-version($dir.IO) // '0.1';
-    print distill-scaffold(:$name, :$version);
-    note "scaffold on stdout (version $version) — redirect to $dir/*.spoz2,";
-    note "then have an agent or human write the invariants from the code.";
+    my $target  = $dir.IO.add(sanitise-system-name($name) ~ '.spoz2');
+    die "spoz2 init: $target already exists" if $target.e;
+    $target.spurt(init-scaffold(:$name, :$version));
+    say "created $target (version $version)";
+    note "next: an agent or human reads the code and writes the invariants.";
 }
 
 #| Current version of a codebase, from package metadata or git tags.

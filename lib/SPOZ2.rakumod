@@ -104,10 +104,10 @@ sub retire-invariant(Str $text, Str :$name!, Str :$until!, Str :$reason = '' -->
 #| A starter .spoz2 for a codebase: the mechanical half of distilling.
 #| The judgement half — reading the code and writing the invariants as
 #| intent — belongs to an agent or human afterwards.
-sub distill-scaffold(Str :$name!, Str :$version! --> Str) is export {
+sub init-scaffold(Str :$name!, Str :$version! --> Str) is export {
     die "SPOZ2: invalid version '$version'"
         unless $version ~~ /^ \d+ [ '.' \d+ ]* $/;
-    my $sys = $name.lc.subst(/<-[\w-]>+/, '-', :g).subst(/^ '-'+ | '-'+ $/, '', :g);
+    my $sys = sanitise-system-name($name);
     die "SPOZ2: cannot make a system name from '$name'" unless $sys;
 
     qq:to/END/;
@@ -132,6 +132,12 @@ sub distill-scaffold(Str :$name!, Str :$version! --> Str) is export {
     system $sys
       TODO: what this system is for, in a few sentences of plain prose.
     END
+}
+
+#| A directory name reduced to a legal system name (word chars and
+#| hyphens): "jmp.nigelhamilton.com" -> "jmp-nigelhamilton-com".
+sub sanitise-system-name(Str $name --> Str) is export {
+    $name.lc.subst(/<-[\w-]>+/, '-', :g).subst(/^ '-'+ | '-'+ $/, '', :g)
 }
 
 #| Parse an agent's drafted entry.  The agent replies in a fixed plain

@@ -113,9 +113,9 @@ bin/spoz2 retire examples/now.spoz2 now-expires-at-midnight 2.0 "Retired in 2.0:
 # what changed in intent between two versions?
 bin/spoz2 diff examples/now.spoz2 1.1 2.0
 
-# starter .spoz2 for a codebase (system name + detected version + conventions;
-# an agent or human then writes the invariants from the code)
-bin/spoz2 distill ~/src/some-project > ~/src/some-project/some-project.spoz2
+# create <name>.spoz2 in a codebase (system name + detected version +
+# conventions; an agent or human then writes the invariants from the code)
+bin/spoz2 init ~/src/some-project      # or just: bin/spoz2 init
 
 # has history been rewritten?  (exit 1 if so — suitable for CI / pre-commit)
 bin/spoz2 guard old.spoz2 new.spoz2   # compare two revisions
