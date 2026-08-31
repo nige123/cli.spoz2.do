@@ -120,6 +120,13 @@ bin/spoz2 check examples/now.spoz2
 # which invariants govern version 2.0?
 bin/spoz2 at examples/now.spoz2 2.0
 
+# what is the software supposed to be doing NOW?  The current version is
+# never stored in the .spoz2 (one spec can govern implementations at
+# different versions) — it is detected from the file's directory
+# (package metadata / git tags), or given, or 'today' for date-versioned specs
+bin/spoz2 now path/to/project.spoz2
+bin/spoz2 now examples/cra.spoz2 today
+
 # how has one invariant changed over time?
 bin/spoz2 history examples/now.spoz2 one-active-now
 

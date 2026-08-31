@@ -22,13 +22,38 @@ multi MAIN('check', Str $file) {
 
 #| List the invariants that apply to a given version.
 multi MAIN('at', Str $file, Str $version) {
-    my $spec = parse-spoz2-file($file);
-    my $v = Version.new($version);
+    show-governing(parse-spoz2-file($file), Version.new($version));
+}
+
+#| What the software is supposed to be doing NOW: the invariants that
+#| govern the current version, resolved without the file saying so —
+#| from the argument ('today' for date-versioned specs), or detected
+#| from the file's directory (package metadata / git tags).
+multi MAIN('now', Str $file, Str $current?) {
+    show-governing(parse-spoz2-file($file),
+                   Version.new(resolve-current($file, $current)));
+}
+
+sub show-governing($spec, Version $v) {
     say "{$spec.system.name} $v";
     for $spec.invariants-at($v) -> $inv {
         say "";
         say "invariant {$inv.name}  ({$inv.range-str})";
         say $inv.text.indent(2);
+    }
+}
+
+#| The asker's vantage point.  Deliberately NOT stored in the .spoz2:
+#| one spec can govern implementations at different versions, and the
+#| implementation's own metadata is the single source of truth.
+sub resolve-current(Str $file, $current) {
+    given $current {
+        when 'today'  { Date.today.Str.subst('-', '.', :g) }
+        when .defined { $_ }
+        default {
+            detect-version($file.IO.parent)
+                // die "spoz2: cannot detect the current version from {$file.IO.parent} — pass a version, or 'today' for date-versioned specs"
+        }
     }
 }
 
@@ -165,13 +190,7 @@ sub detect-version(IO::Path $dir) {
 #| from the file's directory (package metadata / git tags).
 multi MAIN('roadmap', Str $file, Str $current?) {
     my $spec = parse-spoz2-file($file);
-    my $from = do given $current {
-        when 'today'   { Date.today.Str.subst('-', '.', :g) }
-        when .defined  { $_ }
-        default        { detect-version($file.IO.parent)
-            // die "spoz2 roadmap: cannot detect the current version from {$file.IO.parent} — pass it: spoz2 roadmap FILE VERSION, or 'today' for date-versioned specs" }
-    };
-    my $v = Version.new($from);
+    my $v = Version.new(resolve-current($file, $current));
     my @up = $spec.upcoming($v);
     say "{$spec.system.name}: roadmap from $v";
     unless @up {
