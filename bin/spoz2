@@ -184,6 +184,25 @@ sub detect-version(IO::Path $dir) {
     Nil;
 }
 
+#| The next stated intent after the current version — the immediate
+#| work queue: what to implement toward before anything else.
+multi MAIN('next', Str $file, Str $current?) {
+    my $spec = parse-spoz2-file($file);
+    my $v = Version.new(resolve-current($file, $current));
+    my @next = $spec.next-after($v);
+    unless @next {
+        say "{$spec.system.name}: nothing stated beyond $v — the roadmap is empty";
+        exit 0;
+    }
+    say "{$spec.system.name}: next is {@next.head.since}  (current: $v)";
+    for @next -> $i {
+        my $kind = $spec.history($i.name).first(*.since < $i.since) ?? 'supersedes' !! 'new';
+        say "";
+        say "invariant {$i.name}  ($kind)";
+        say $i.text.indent(2);
+    }
+}
+
 #| Future intent: entries stated but not yet governing at the current
 #| version — the development spine.  CURRENT is taken from the argument
 #| ('today' means today's date, for date-versioned specs), or detected

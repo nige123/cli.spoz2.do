@@ -140,6 +140,9 @@ bin/spoz2 retire examples/now.spoz2 now-expires-at-midnight 2.0 "Retired in 2.0:
 # what changed in intent between two versions?
 bin/spoz2 diff examples/now.spoz2 1.1 2.0
 
+# the immediate work queue: intent at the nearest upcoming version
+bin/spoz2 next examples/cra.spoz2 today
+
 # future intent: stated but not yet governing — the development spine.
 # An entry whose `since` is ahead of the current version IS the roadmap;
 # agents implement toward it (current version given, or detected from

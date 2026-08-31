@@ -84,6 +84,13 @@ class Spec is export {
         @!entries.grep(*.since > $v).sort(*.since)
     }
 
+    #| The nearest stated future: the upcoming entries at the first
+    #| version after $v that has any — the immediate work queue.
+    method next-after(Version $v --> Seq) {
+        my @up = self.upcoming($v);
+        @up ?? @up.grep(*.since == @up.head.since) !! ().Seq
+    }
+
     #| Structural checks that the grammar cannot express.
     #| Returns a list of problems; empty means the spec is well formed.
     method problems(--> List) {

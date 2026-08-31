@@ -68,6 +68,8 @@ is $road.upcoming(v1.5)».name, ('one',),
     'the 2.0 supersession is the roadmap seen from 1.5';
 is ~$road.upcoming(v1.5).head.since, '2.0', 'upcoming entry keeps its since';
 is $road.upcoming(v2.0).elems, 0, 'nothing upcoming at the latest since';
+is $road.next-after(v1.5)».name, ('one',), 'next-after picks the nearest future version';
+is $road.next-after(v2.0).elems, 0, 'next-after empty when the roadmap is done';
 
 # --- init-scaffold ----------------------------------------------------
 
