@@ -2,10 +2,10 @@ use Test;
 use lib 'lib';
 use SPOZ2;
 
-plan 8;
+plan 13;
 
 # Every shipped .spoz2 file must parse and be well formed.
-for <examples/now.spoz2 spoz2.spoz2> -> $file {
+for <examples/now.spoz2 examples/invoicing.spoz2 examples/cra.spoz2 spoz2.spoz2> -> $file {
     my $spec = parse-spoz2-file($file);
     ok $spec, "$file parses";
     is-deeply $spec.problems, (), "$file has no problems";
@@ -20,3 +20,8 @@ like $now.invariants-at(v2.0).first(*.name eq 'one-active-now').text,
     /'per workspace'/, '2.0 text governs 2.0';
 nok $now.invariants-at(v2.0).first(*.name eq 'now-expires-at-midnight'),
     'retired invariant does not apply at 2.0';
+
+# The CRA example: date-shaped versions phase obligations in.
+my $cra = parse-spoz2-file('examples/cra.spoz2');
+is $cra.invariants-at(v2026.09.30)».name, ('vulnerability-reporting',),
+    'only the reporting obligation governs before full application';

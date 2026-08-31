@@ -1,0 +1,52 @@
+spoz2 0.1
+
+# CRA: the EU Cyber Resilience Act obligations governing a small software
+# product sold in the EU, written as a SPOZ2.  Two things this example
+# shows:
+#
+#   1. Versions are dates set by the regulation, not by releases — the
+#      rules change when the law does (like examples/invoicing.spoz2).
+#   2. A .spoz2 links outward to the artifacts it governs: the SBOM, the
+#      vulnerability-handling procedure, the regulation text itself.
+#      SPOZ2 is the intent spine; the linked artifacts carry the detail.
+#      Links live in prose — a human reads them, an agent follows them,
+#      and the entry stays authoritative for its dates even after a
+#      linked document is rewritten.
+#
+# Illustration only — check the regulation for your own product's scope.
+
+system acme-widget-cra
+  The Cyber Resilience Act obligations that Acme Ltd intends its widget
+  product to meet, bound to the dates the regulation makes them apply.
+  Regulation (EU) 2024/2847: https://eur-lex.europa.eu/eli/reg/2024/2847
+
+invariant vulnerability-reporting
+  since 2026.09.11
+  An actively exploited vulnerability is reported to ENISA and the CSIRT:
+  early warning within 24 hours of awareness, full notification within
+  72 hours, final report within 14 days of a corrective measure being
+  available.  Required by Art 14.  Internal procedure:
+  docs/vuln-handling.md.  Contact roster: docs/security-contacts.md.
+
+invariant technical-documentation-current
+  since 2027.12.11
+  Technical documentation describing the product's intended purpose,
+  essential functions and security properties exists, matches the version
+  placed on the market, and is retained for ten years.  Required by
+  Art 31 and Annex VII.  The product's own .spoz2 file is part of this
+  documentation: it records intended behaviour per version, and its
+  history is append-only ("spoz2 guard" enforces that), so what was
+  intended at any shipped version remains on the record.
+
+invariant sbom-maintained
+  since 2027.12.11
+  A software bill of materials in a machine-readable format covers at
+  least the product's top-level dependencies and is updated with each
+  release.  Required by Annex I Part II.  Current SBOM:
+  sbom/current.spdx.json.
+
+invariant security-support-period
+  since 2027.12.11
+  Security updates are provided for at least five years from placing the
+  product on the market, and remain available for ten.  Required by
+  Art 13.  End-of-support dates per release: docs/support-policy.md.

@@ -82,6 +82,9 @@ bin/spoz2                   tiny CLI: check | at | history
 examples/now.spoz2          the first example: a focus tool across two versions
 examples/invoicing.spoz2    a non-software example: the rules governing a company's invoices,
                             versioned by date (2020.07.15) as the law and contracts change
+examples/cra.spoz2          EU Cyber Resilience Act obligations as a SPOZ2: versions are
+                            the law's dates, prose links to the surrounding artifacts
+                            (SBOM, procedures, the regulation itself)
 spoz2.spoz2                 SPOZ2 describing itself
 t/                          tests
 ```
