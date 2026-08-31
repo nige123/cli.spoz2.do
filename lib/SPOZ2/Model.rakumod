@@ -60,6 +60,24 @@ class Spec is export {
         @!entries.map({ .since, (.until // Empty) }).flat.unique(:as(*.Str)).sort
     }
 
+    #| What changed in intent between versions $a and $b: invariants
+    #| that newly govern, that stopped governing, that are governed by
+    #| a different entry, and that are unchanged.
+    method changes(Version $a, Version $b --> Map) {
+        my %at-a = self.invariants-at($a).map({ .name => $_ });
+        my %at-b = self.invariants-at($b).map({ .name => $_ });
+        my @names = self.names;
+        Map.new:
+            added   => @names.grep({ %at-b{$_}:exists and %at-a{$_}:!exists })
+                             .map({ %at-b{$_} }).List,
+            retired => @names.grep({ %at-a{$_}:exists and %at-b{$_}:!exists })
+                             .map({ %at-a{$_} }).List,
+            changed => @names.grep({ %at-a{$_}:exists and %at-b{$_}:exists
+                                     and %at-a{$_} !=== %at-b{$_} })
+                             .map({ (%at-a{$_}, %at-b{$_}) }).List,
+            same    => @names.grep({ %at-a{$_}:exists and %at-a{$_} === %at-b{$_} }).List;
+    }
+
     #| Structural checks that the grammar cannot express.
     #| Returns a list of problems; empty means the spec is well formed.
     method problems(--> List) {

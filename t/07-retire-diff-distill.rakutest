@@ -1,0 +1,76 @@
+use Test;
+use SPOZ2;
+use SPOZ2::Model;
+
+my $base = q:to/END/;
+    spoz2 0.1
+
+    system demo
+      A demo system.
+
+    invariant one
+      since 1.0
+      Rule one as first stated.
+
+    invariant one
+      since 2.0
+      Rule one, restated for 2.0.
+
+    invariant two
+      since 1.0
+      Rule two.
+    END
+
+# --- retire-invariant ----------------------------------------------------
+
+my $retired = retire-invariant($base, name => 'two', until => '3.0',
+                               reason => 'Retired in 3.0: no longer needed.');
+my $spec = parse-spoz2($retired);
+my $entry = $spec.history('two').tail;
+is ~$entry.until, '3.0', 'until added to the entry';
+like $entry.text, /'no longer needed'/, 'reason appended as prose';
+like $entry.text, /^'Rule two.'/, 'original prose untouched';
+is-deeply guard-history(parse-spoz2($base), $spec), (),
+    'retirement is a legal evolution';
+ok $spec.invariants-at(v2.5).map(*.name).grep('two'), 'still governs before until';
+nok $spec.invariants-at(v3.0).map(*.name).grep('two'), 'governs nothing at until';
+
+# retiring targets the LATEST entry of a name
+my $r1 = retire-invariant($base, name => 'one', until => '3.0');
+is ~parse-spoz2($r1).history('one').tail.until, '3.0', 'latest entry retired';
+nok parse-spoz2($r1).history('one').head.until.defined, 'older entry untouched';
+
+throws-like { retire-invariant($base, name => 'nope', until => '3.0') },
+    Exception, message => /'no invariant named'/, 'unknown name refused';
+throws-like { retire-invariant($retired, name => 'two', until => '4.0') },
+    Exception, message => /'already retired'/, 'double retirement refused';
+throws-like { retire-invariant($base, name => 'two', until => '0.5') },
+    Exception, message => /'must be after since'/, 'until before since refused';
+
+# --- Spec.changes --------------------------------------------------------
+
+my %c = parse-spoz2($retired).changes(v1.5, v3.0);
+is %c<changed>.elems, 1, 'one changed invariant';
+is %c<changed>[0][1].since, v2.0, 'changed to the 2.0 entry';
+is %c<retired>».name, ('two',), 'retirement shows as retired';
+is %c<added>.elems, 0, 'nothing added';
+
+%c = parse-spoz2($retired).changes(v0.5, v1.0);
+is %c<added>».name.sort, ('one', 'two'), 'first version adds both';
+
+%c = parse-spoz2($retired).changes(v1.0, v1.5);
+is %c<same>.sort, ('one', 'two'), 'no change between quiet versions';
+
+# --- distill-scaffold ----------------------------------------------------
+
+my $scaffold = distill-scaffold(name => 'jmp.nigelhamilton.com', version => '52');
+my $s = parse-spoz2($scaffold);
+is $s.system.name, 'jmp-nigelhamilton-com', 'system name sanitised';
+like $scaffold, /'since 52'/, 'version lands in the TODO guidance';
+like $scaffold, /'append-only'/, 'conventions preamble present';
+is $s.entries.elems, 0, 'no invariants yet — that is the point';
+
+throws-like { distill-scaffold(name => '...', version => '1.0') },
+    Exception, message => /'cannot make a system name'/, 'unusable name refused';
+
+done-testing;

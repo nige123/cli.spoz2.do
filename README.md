@@ -107,6 +107,16 @@ bin/spoz2 history examples/now.spoz2 one-active-now
 bin/spoz2 add examples/now.spoz2 one-active-now 3.0 "The new rule, as prose."
 bin/spoz2 add examples/now.spoz2 one-active-now 3.0 < prose.txt   # prose from stdin
 
+# retire an invariant (adds `until` + the reason as appended prose)
+bin/spoz2 retire examples/now.spoz2 now-expires-at-midnight 2.0 "Retired in 2.0: ..."
+
+# what changed in intent between two versions?
+bin/spoz2 diff examples/now.spoz2 1.1 2.0
+
+# starter .spoz2 for a codebase (system name + detected version + conventions;
+# an agent or human then writes the invariants from the code)
+bin/spoz2 distill ~/src/some-project > ~/src/some-project/some-project.spoz2
+
 # has history been rewritten?  (exit 1 if so — suitable for CI / pre-commit)
 bin/spoz2 guard old.spoz2 new.spoz2   # compare two revisions
 bin/spoz2 guard spoz2.spoz2           # compare working file against git HEAD

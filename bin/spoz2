@@ -7,7 +7,7 @@ use SPOZ2::Model;
 my %*SUB-MAIN-OPTS = :named-anywhere;
 
 #| Parse a .spoz2 file and report what it contains.
-multi MAIN('check', IO() $file) {
+multi MAIN('check', Str $file) {
     my $spec = parse-spoz2-file($file);
     say "system {$spec.system.name} (spoz2 {$spec.format})";
     say "  {$spec.entries.elems} invariant entries, {$spec.names.elems} names";
@@ -21,7 +21,7 @@ multi MAIN('check', IO() $file) {
 }
 
 #| List the invariants that apply to a given version.
-multi MAIN('at', IO() $file, Str $version) {
+multi MAIN('at', Str $file, Str $version) {
     my $spec = parse-spoz2-file($file);
     my $v = Version.new($version);
     say "{$spec.system.name} $v";
@@ -35,10 +35,10 @@ multi MAIN('at', IO() $file, Str $version) {
 #| Add a new invariant entry.  Same name + later since supersedes the
 #| old entry; the old entry stays.  Prose comes from the arguments, or
 #| from stdin when none are given.
-multi MAIN('add', IO() $file, Str $name, Str $since, *@prose) {
+multi MAIN('add', Str $file, Str $name, Str $since, *@prose) {
     my $prose = @prose ?? @prose.join(' ') !! $*IN.slurp;
-    my $new-text = add-invariant($file.slurp, :$name, :$since, :$prose);
-    $file.spurt($new-text);
+    my $new-text = add-invariant($file.IO.slurp, :$name, :$since, :$prose);
+    $file.IO.spurt($new-text);
 
     my @h = parse-spoz2($new-text).history($name);
     if @h > 1 and @h.tail.since != Version.new($since) {
@@ -52,11 +52,11 @@ multi MAIN('add', IO() $file, Str $name, Str $since, *@prose) {
 #| an LLM drafts the entry — name (supersede or new), since, prose.
 #| The draft goes through the same validated add as a hand-written one,
 #| so the agent cannot produce a malformed entry or rewrite history.
-multi MAIN('add', IO() $file, *@description, Bool :$agent!) {
+multi MAIN('add', Str $file, *@description, Bool :$agent!) {
     my $description = @description ?? @description.join(' ') !! $*IN.slurp;
     die "spoz2 add --agent: describe the change of intent" unless $description.trim;
 
-    my $prompt = q:to/END/ ~ "\n---\n{$file.slurp}---\n\nThe change of intent, in the maintainer's words:\n$description\n";
+    my $prompt = q:to/END/ ~ "\n---\n{$file.IO.slurp}---\n\nThe change of intent, in the maintainer's words:\n$description\n";
         You are updating a SPOZ2 specification file.  A SPOZ2 file records what
         a system is supposed to do, as named invariants bound to version
         ranges.  History is append-only: a change of intent becomes a NEW
@@ -86,8 +86,8 @@ multi MAIN('add', IO() $file, *@description, Bool :$agent!) {
     die "spoz2 add --agent: agent command failed ($cmd)" if $proc.exitcode != 0;
 
     my %entry = parse-agent-entry($reply);
-    my $new-text = add-invariant($file.slurp, |%entry);
-    $file.spurt($new-text);
+    my $new-text = add-invariant($file.IO.slurp, |%entry);
+    $file.IO.spurt($new-text);
 
     say "added invariant %entry<name> since %entry<since> to $file (agent-drafted):";
     say '';
@@ -96,15 +96,76 @@ multi MAIN('add', IO() $file, *@description, Bool :$agent!) {
     print %entry<prose>.lines.map({ "  $_\n" }).join;
 }
 
+#| Retire an invariant: its latest entry gains `until` and, when given,
+#| the reason appended as prose.  The rule then governs no version at or
+#| after UNTIL.  The old entry otherwise stays untouched.
+multi MAIN('retire', Str $file, Str $name, Str $until, *@reason) {
+    my $new-text = retire-invariant($file.IO.slurp, :$name, :$until,
+                                    reason => @reason.join(' '));
+    $file.IO.spurt($new-text);
+    say "retired invariant $name at $until in $file";
+}
+
+#| What changed in intent between two versions.
+multi MAIN('diff', Str $file, Str $v1, Str $v2) {
+    my $spec = parse-spoz2-file($file);
+    my %c = $spec.changes(Version.new($v1), Version.new($v2));
+    say "{$spec.system.name}: intent changes $v1 -> $v2";
+    for %c<added>.list -> $i {
+        say "\nnew: invariant {$i.name}  ({$i.range-str})";
+        say $i.text.indent(2);
+    }
+    for %c<retired>.list -> $i {
+        say "\nretired: invariant {$i.name}  (was {$i.range-str})";
+        say $i.text.indent(2);
+    }
+    for %c<changed>.list -> ($was, $now) {
+        say "\nchanged: invariant {$now.name}  (since {$now.since})";
+        say "  was ({$was.range-str}):";
+        say $was.text.indent(4);
+        say "  now ({$now.range-str}):";
+        say $now.text.indent(4);
+    }
+    say "\nunchanged: {%c<same>.join(', ')}" if %c<same>;
+    say "\nno intent changes" unless %c<added> or %c<retired> or %c<changed>;
+}
+
+#| Print a starter .spoz2 scaffold for a codebase: system name from the
+#| directory, current version detected from its metadata or git tags.
+#| Writing the invariants — the judgement half — is left to an agent or
+#| human, as the scaffold's TODO comments instruct.
+multi MAIN('distill', Str $dir) {
+    die "spoz2 distill: '$dir' is not a directory" unless $dir.IO.d;
+    my $name    = $dir.IO.absolute.IO.basename;
+    my $version = detect-version($dir.IO) // '0.1';
+    print distill-scaffold(:$name, :$version);
+    note "scaffold on stdout (version $version) — redirect to $dir/*.spoz2,";
+    note "then have an agent or human write the invariants from the code.";
+}
+
+#| Current version of a codebase, from package metadata or git tags.
+sub detect-version(IO::Path $dir) {
+    for <META6.json package.json> -> $f {
+        next unless $dir.add($f).e;
+        return ~$0 if $dir.add($f).slurp ~~ / '"version"' \s* ':' \s* '"'? (\d+ [ '.' \d+ ]*) /;
+    }
+    my $tag = run 'git', '-C', $dir.Str, 'describe', '--tags', '--abbrev=0', :out, :err;
+    if $tag.exitcode == 0 {
+        my $t = $tag.out.slurp.trim.subst(/^ 'v' /, '');
+        return $t if $t ~~ /^ \d+ [ '.' \d+ ]* $/;
+    }
+    Nil;
+}
+
 #| Check that $new-file only appends to the history in $old-file.
-multi MAIN('guard', IO() $old-file, IO() $new-file) {
+multi MAIN('guard', Str $old-file, Str $new-file) {
     guard(parse-spoz2-file($old-file), parse-spoz2-file($new-file));
 }
 
 #| Check the working file against its last committed version (git HEAD).
-multi MAIN('guard', IO() $file) {
-    my $dir  = $file.parent.Str;
-    my $show = run 'git', '-C', $dir, 'show', "HEAD:./{$file.basename}", :out, :err;
+multi MAIN('guard', Str $file) {
+    my $dir  = $file.IO.parent.Str;
+    my $show = run 'git', '-C', $dir, 'show', "HEAD:./{$file.IO.basename}", :out, :err;
     my $old-text = $show.out.slurp;
     $show.err.slurp;
     if $show.exitcode != 0 {
@@ -125,7 +186,7 @@ sub guard($old, $new) {
 }
 
 #| Show every historical entry for one invariant name.
-multi MAIN('history', IO() $file, Str $name) {
+multi MAIN('history', Str $file, Str $name) {
     my $spec = parse-spoz2-file($file);
     my @h = $spec.history($name);
     note "no invariant named '$name'" and exit 1 unless @h;

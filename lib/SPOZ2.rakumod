@@ -44,6 +44,96 @@ sub add-invariant(Str $text, Str :$name!, Str :$since!, Str :$prose! --> Str) is
     $new-text;
 }
 
+#| Retire an invariant: add `until` to its latest entry, optionally
+#| appending the reason as prose.  These are the only two edits ever
+#| made to an existing entry, and both are legal under the guard —
+#| which is verified before the new text is returned.
+sub retire-invariant(Str $text, Str :$name!, Str :$until!, Str :$reason = '' --> Str) is export {
+    die "SPOZ2: invalid version '$until'"
+        unless $until ~~ /^ \d+ [ '.' \d+ ]* $/;
+
+    my $old = parse-spoz2($text);
+    my @h = $old.history($name);
+    die "SPOZ2: no invariant named '$name'" unless @h;
+    my $target = @h.tail;
+    die "SPOZ2: '$name' (since {$target.since}) is already retired (until {$target.until})"
+        if $target.until.defined;
+
+    # locate the target entry's block in the text by name + since
+    my @lines = $text.lines;
+    my ($block-start, $block-end);
+    my $i = 0;
+    while $i < @lines {
+        if @lines[$i] ~~ /^ 'invariant' \h+ (<[\w-]>+) \h* $/ and ~$0 eq $name {
+            my $j = $i + 1;
+            my $since;
+            while $j < @lines and @lines[$j] !~~ /^\S/ {
+                $since = Version.new(~$0) if @lines[$j] ~~ /^ \h+ 'since' \h+ (\S+)/;
+                $j++;
+            }
+            if $since.defined and $since == $target.since {
+                ($block-start, $block-end) = $i, $j;
+                last;
+            }
+            $i = $j;
+        }
+        else { $i++ }
+    }
+    die "SPOZ2: could not locate the entry for '$name' since {$target.since} in the text"
+        without $block-start;
+
+    my $since-idx = ($block-start ..^ $block-end).first({ @lines[$_] ~~ /^ \h+ 'since' \h/ });
+    @lines.splice($since-idx + 1, 0, "  until $until");
+    $block-end++;
+    if $reason.trim {
+        my $last = ($block-start ..^ $block-end).grep({ @lines[$_].trim ne '' }).tail;
+        @lines.splice($last + 1, 0, wrap-prose($reason.trim).lines);
+    }
+    my $new-text = @lines.join("\n") ~ "\n";
+
+    my $new = parse-spoz2($new-text);
+    if $new.problems -> @p {
+        die "SPOZ2: refusing to retire — { @p.join('; ') }";
+    }
+    if guard-history($old, $new) -> @v {
+        die "SPOZ2: refusing to retire — { @v.join('; ') }";
+    }
+    $new-text;
+}
+
+#| A starter .spoz2 for a codebase: the mechanical half of distilling.
+#| The judgement half — reading the code and writing the invariants as
+#| intent — belongs to an agent or human afterwards.
+sub distill-scaffold(Str :$name!, Str :$version! --> Str) is export {
+    die "SPOZ2: invalid version '$version'"
+        unless $version ~~ /^ \d+ [ '.' \d+ ]* $/;
+    my $sys = $name.lc.subst(/<-[\w-]>+/, '-', :g).subst(/^ '-'+ | '-'+ $/, '', :g);
+    die "SPOZ2: cannot make a system name from '$name'" unless $sys;
+
+    qq:to/END/;
+    spoz2 0.1
+
+    # $sys described in SPOZ2: intended behaviour, not implementation.
+    # Distilled starting at version $version.  History starts here —
+    # earlier versions are not reconstructed.
+    #
+    # SPOZ2 conventions: an invariant is a named rule bound to versions
+    # (since, and until when retired).  History is append-only: a change
+    # of intent is a NEW entry with the same name and a later "since";
+    # old entries stay and remain authoritative for their versions.
+    # Never edit or delete an existing entry.  "spoz2 guard" enforces
+    # this; "spoz2 add" and "spoz2 retire" are the safe write paths.
+    #
+    # TODO (agent or human): read the codebase and replace the system
+    # prose below, then write the invariants — the rules that matter,
+    # each as self-contained prose, all "since $version".  State intent
+    # (what must hold and why), not implementation detail.
+
+    system $sys
+      TODO: what this system is for, in a few sentences of plain prose.
+    END
+}
+
 #| Parse an agent's drafted entry.  The agent replies in a fixed plain
 #| shape (name: / since: / prose: then continuation lines) so no JSON
 #| dependency is needed.  Code fences and surrounding chatter before
