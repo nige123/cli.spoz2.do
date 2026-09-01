@@ -312,16 +312,16 @@ multi MAIN('roadmap', Str $file, Str $current?) {
     }
 }
 
-#| Implement the next stated intent: hand the repo to a coding agent
-#| with the spec as authority.  The loop: add a future invariant, then
-#| spoz2 implement, review the diff, ship the version — the entry
-#| starts governing on its own.
-multi MAIN('implement', Str $file, Str $current?) {
+#| Do what the software is supposed to do next: hand the repo to a
+#| coding agent with the spec as authority.  The loop: add a future
+#| invariant, then spoz2 do, review the diff, ship the version — the
+#| entry starts governing on its own.  (Longhand alias: implement.)
+multi MAIN('do', Str $file, Str $current?) {
     my $dir  = $file.IO.parent.absolute;
     my $spec = parse-spoz2-file($file);
     my $v    = Version.new(resolve-current($file, $current));
     my @next = $spec.next-after($v);
-    die "spoz2 implement: nothing stated beyond $v — add a future invariant first:\n  spoz2 add $file NAME SINCE \"the rule as prose\""
+    die "spoz2 do: nothing stated beyond $v — add a future invariant first:\n  spoz2 add $file NAME SINCE \"the rule as prose\""
         unless @next;
     my $goal = @next.head.since;
 
@@ -351,8 +351,13 @@ multi MAIN('implement', Str $file, Str $current?) {
     $proc.in.print($prompt);
     $proc.in.close;
     say $proc.out.slurp;
-    die "spoz2 implement: agent command failed ($cmd)" if $proc.exitcode != 0;
+    die "spoz2 do: agent command failed ($cmd)" if $proc.exitcode != 0;
     note "review the working tree in $dir before committing.";
+}
+
+#| Longhand alias for `do`.
+multi MAIN('implement', Str $file, Str $current?) {
+    MAIN('do', $file, $current // Str);
 }
 
 #| Check that $new-file only appends to the history in $old-file.
