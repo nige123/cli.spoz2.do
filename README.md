@@ -159,6 +159,11 @@ bin/spoz2 init --agent ~/src/some-project   # an LLM distills real invariants
                                             # from README/changelog/layout;
                                             # validated before writing, review it
 
+# implement the next stated intent: hands the repo to a coding agent with
+# the spec as authority; review the diff, ship the version, the entry
+# starts governing on its own
+bin/spoz2 implement path/to/project.spoz2
+
 # has history been rewritten?  (exit 1 if so — suitable for CI / pre-commit)
 bin/spoz2 guard old.spoz2 new.spoz2   # compare two revisions
 bin/spoz2 guard spoz2.spoz2           # compare working file against git HEAD

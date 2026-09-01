@@ -155,34 +155,47 @@ multi MAIN('diff', Str $file, Str $v1, Str $v2) {
     say "\nno intent changes" unless %c<added> or %c<retired> or %c<changed>;
 }
 
-#| Create DIR/<name>.spoz2, a starter scaffold for a codebase: system
-#| name from the directory, current version detected from its metadata
-#| or git tags.  Writing the invariants — the judgement half — is left
-#| to an agent or human, as the scaffold's TODO comments instruct.
-multi MAIN('init', Str $dir = '.') {
+#| Create DIR/<name>.spoz2 and make it REAL: by default an LLM reads
+#| the codebase's own account of itself (README, changelog, file
+#| layout) and writes the first spec — system prose plus starter
+#| invariants — validated before it lands, reviewed by the maintainer,
+#| because only they know intent.  A transient agent failure is retried
+#| once; if the agent cannot be reached at all, the plain TODO scaffold
+#| is written instead (loudly), so init always leaves a valid file.
+#| --/agent skips the LLM and writes just the scaffold.
+multi MAIN('init', Str $dir = '.', Bool :$agent = True) {
     die "spoz2 init: '$dir' is not a directory" unless $dir.IO.d;
     my $name    = $dir.IO.absolute.IO.basename;
     my $version = detect-version($dir.IO) // '0.1';
     my $target  = $dir.IO.add(sanitise-system-name($name) ~ '.spoz2');
     die "spoz2 init: $target already exists" if $target.e;
-    $target.spurt(init-scaffold(:$name, :$version));
-    say "created $target (version $version)";
-    note "next: an agent or human reads the code and writes the invariants.";
+
+    my $text;
+    if $agent {
+        for 1, 2 -> $attempt {
+            $text = try agent-init-draft($dir.IO, :$name, :$version);
+            last with $text;
+            note "agent draft attempt $attempt failed: {$!.message.lines.head}";
+        }
+        note "falling back to the plain scaffold — distill it by hand, or delete the file and rerun spoz2 init"
+            without $text;
+    }
+    with $text {
+        $target.spurt($text);
+        say "created $target (version $version, {parse-spoz2($text).entries.elems} invariants, agent-drafted)";
+        note "review it — the draft states intent, and only the maintainer knows intent.";
+    }
+    else {
+        $target.spurt(init-scaffold(:$name, :$version));
+        say "created $target (version $version, scaffold only)";
+        note "next: an agent or human reads the code and writes the invariants.";
+    }
 }
 
-#| Agent-assisted init: an LLM reads the codebase's own account of
-#| itself (README, changelog, file layout) and completes the scaffold
-#| into a first real spec — system prose plus starter invariants.  The
-#| draft must parse clean with no problems before it is written, and
-#| the maintainer reviews it: only they know intent.
-multi MAIN('init', Str $dir = '.', Bool :$agent!) {
-    die "spoz2 init: '$dir' is not a directory" unless $dir.IO.d;
-    my $name    = $dir.IO.absolute.IO.basename;
-    my $version = detect-version($dir.IO) // '0.1';
-    my $target  = $dir.IO.add(sanitise-system-name($name) ~ '.spoz2');
-    die "spoz2 init: $target already exists" if $target.e;
-
-    my $prompt = qq:to/END/ ~ init-scaffold(:$name, :$version) ~ "\nEvidence from the codebase:\n" ~ gather-context($dir.IO);
+#| One agent attempt: prompt from scaffold + bounded evidence, reply
+#| validated (parses, no problems, at least one invariant) or we die.
+sub agent-init-draft(IO::Path $dir, Str :$name!, Str :$version! --> Str) {
+    my $prompt = qq:to/END/ ~ init-scaffold(:$name, :$version) ~ "\nEvidence from the codebase:\n" ~ gather-context($dir);
         Complete the SPOZ2 scaffold below into the first real specification
         for the codebase whose evidence follows it.  Keep the format line
         and the conventions comment.  Replace the TODO system prose with
@@ -203,24 +216,20 @@ multi MAIN('init', Str $dir = '.', Bool :$agent!) {
     $proc.in.print($prompt);
     $proc.in.close;
     my $reply = $proc.out.slurp;
-    die "spoz2 init --agent: agent command failed ($cmd)" if $proc.exitcode != 0;
+    die "agent command failed ($cmd)" if $proc.exitcode != 0;
 
     # tolerate fences/chatter: the file starts at its format line
     my @lines = $reply.lines.grep({ !.starts-with('```') });
     my $start = @lines.first(*.match(/^ 'spoz2' \h+ \d /), :k)
-        // die "spoz2 init --agent: no 'spoz2 <version>' format line in the reply:\n$reply";
+        // die "no 'spoz2 <version>' format line in the agent reply";
     my $text = @lines[$start .. *].join("\n") ~ "\n";
 
     my $spec = parse-spoz2($text);
     if $spec.problems -> @p {
-        die "spoz2 init --agent: draft has problems — { @p.join('; ') }";
+        die "draft has problems — { @p.join('; ') }";
     }
-    die "spoz2 init --agent: draft has no invariants — refusing to write an empty spec"
-        unless $spec.entries;
-
-    $target.spurt($text);
-    say "created $target (version $version, {$spec.entries.elems} invariants, agent-drafted)";
-    note "review it — the draft states intent, and only the maintainer knows intent.";
+    die "draft has no invariants" unless $spec.entries;
+    $text;
 }
 
 #| Bounded evidence for the distilling agent: the codebase's own account
@@ -301,6 +310,49 @@ multi MAIN('roadmap', Str $file, Str $current?) {
         say "  invariant {$i.name}  ($kind)";
         say $i.text.indent(4);
     }
+}
+
+#| Implement the next stated intent: hand the repo to a coding agent
+#| with the spec as authority.  The loop: add a future invariant, then
+#| spoz2 implement, review the diff, ship the version — the entry
+#| starts governing on its own.
+multi MAIN('implement', Str $file, Str $current?) {
+    my $dir  = $file.IO.parent.absolute;
+    my $spec = parse-spoz2-file($file);
+    my $v    = Version.new(resolve-current($file, $current));
+    my @next = $spec.next-after($v);
+    die "spoz2 implement: nothing stated beyond $v — add a future invariant first:\n  spoz2 add $file NAME SINCE \"the rule as prose\""
+        unless @next;
+    my $goal = @next.head.since;
+
+    my $prompt = qq:to/END/;
+        You are working in the repository at $dir.  The file
+        {$file.IO.basename} there is the authoritative statement of
+        intended behaviour: treat it as authority over the README, the
+        changelog and the current code.  The current version is $v and
+        version $goal is being prepared.  Implement the intent that
+        governs $goal:
+        1. Read {$file.IO.basename}.  The entries with "since $goal" are
+           the change; the other governing invariants must keep holding.
+        2. Find where the implementation diverges from that intent and
+           make the minimal changes to close the gap, plus whatever
+           version bookkeeping this project conventionally does.
+        3. Run the project's tests; add or update tests for the changed
+           behaviour.
+        4. Do NOT commit, and do not touch any other repository.
+        Report at the end: what diverged, what you changed (files and
+        specifics), test results, and any friction where the spec was
+        unclear.
+        END
+
+    my $cmd = %*ENV<SPOZ2_IMPLEMENT_CMD> // 'claude -p --permission-mode acceptEdits';
+    note "handing $dir to the agent ($cmd) to implement $goal ...";
+    my $proc = run '/bin/sh', '-c', "cd '$dir' && $cmd", :in, :out;
+    $proc.in.print($prompt);
+    $proc.in.close;
+    say $proc.out.slurp;
+    die "spoz2 implement: agent command failed ($cmd)" if $proc.exitcode != 0;
+    note "review the working tree in $dir before committing.";
 }
 
 #| Check that $new-file only appends to the history in $old-file.
