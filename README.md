@@ -109,9 +109,23 @@ spoz2.spoz2                 SPOZ2 describing itself
 t/                          tests
 ```
 
-## Running
+## Installing
 
-Needs Raku (tested with Rakudo 2026.07).  No dependencies.
+A regular Raku distribution (tested with Rakudo 2026.07).  No dependencies.
+
+```sh
+zef install .        # installs the SPOZ2 modules and puts `spoz2` on PATH
+```
+
+After that every command below works as plain `spoz2` from any directory.
+(rakubrew users: run `rakubrew rehash` once so the new script gets a shim.)
+
+The code also runs unmodified under [rakupp](https://github.com/ash/rakupp),
+an independent Raku implementation in C++ — 105 of 106 tests pass as of
+rakupp 3.25.0 — so a future native `spoz2` executable compiled with rakupp
+is on the cards once it matures.
+
+## Running from a checkout
 
 ```sh
 # tests

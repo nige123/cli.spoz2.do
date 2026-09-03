@@ -2,8 +2,9 @@
     "name": "SPOZ2",
     "description": "Describes what software is supposed to be doing, in a form humans and AI can understand",
     "version": "0.1.0",
-    "auth": "spoz2",
-    "perl": "6.d",
+    "auth": "zef:nige123",
+    "authors": ["Nigel Hamilton"],
+    "raku": "6.d",
     "license": "Artistic-2.0",
     "depends": [],
     "provides": {
@@ -12,5 +13,6 @@
         "SPOZ2::Actions": "lib/SPOZ2/Actions.rakumod",
         "SPOZ2::Model": "lib/SPOZ2/Model.rakumod"
     },
-    "tags": ["specification", "invariants", "grammar"]
+    "source-url": "https://github.com/nige123/cli.spoz2.do.git",
+    "tags": ["specification", "invariants", "intent", "grammar", "ai"]
 }
