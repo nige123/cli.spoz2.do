@@ -121,9 +121,11 @@ After that every command below works as plain `spoz2` from any directory.
 (rakubrew users: run `rakubrew rehash` once so the new script gets a shim.)
 
 The code also runs unmodified under [rakupp](https://github.com/ash/rakupp),
-an independent Raku implementation in C++ — 105 of 106 tests pass as of
-rakupp 3.25.0 — so a future native `spoz2` executable compiled with rakupp
-is on the cards once it matures.
+an independent Raku implementation in C++ — all 106 tests pass on rakupp
+main (the one divergence found was
+[fixed upstream same-day](https://github.com/ash/rakupp/issues/64)) — so a
+future native `spoz2` executable compiled with rakupp is on the cards once
+it matures.
 
 ## Running from a checkout
 
