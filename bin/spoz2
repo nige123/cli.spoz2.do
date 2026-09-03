@@ -6,6 +6,9 @@ use SPOZ2::Model;
 # allow flags after the subcommand, e.g. spoz2 add --agent FILE ...
 my %*SUB-MAIN-OPTS = :named-anywhere;
 
+# usage lines say `spoz2`, not the installed wrapper's full path
+$*PROGRAM-NAME = 'spoz2';
+
 #| Parse a .spoz2 file and report what it contains.
 multi MAIN('check', Str $file) {
     my $spec = parse-spoz2-file($file);
