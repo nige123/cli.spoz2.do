@@ -44,3 +44,16 @@ invariant future-intent-is-roadmap
   it (spoz2 roadmap) and agents implement toward it. Completing a
   roadmap item changes the code, never the entry - the entry simply
   begins to govern when its version ships.
+
+invariant tooling-is-agent-invocable
+  since 0.2
+  The SPOZ2 tooling provides a non-interactive command interface that
+  humans, scripts and AI agent harnesses can invoke. Commands intended
+  for automation return structured results and distinguish success,
+  invalid input and failed operations unambiguously.
+
+invariant core-behaviour-needs-no-ai
+  since 0.2
+  Parsing, validation, version selection and history protection are
+  deterministic operations. They do not require a language model,
+  network service or interpretation of invariant prose.
