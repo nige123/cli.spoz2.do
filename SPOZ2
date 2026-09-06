@@ -1,0 +1,79 @@
+SPOZ2 0.1
+
+# What is this project supposed to do?
+# Humans and AI tools should treat this file as the authoritative
+# expression of intent.  Edit it directly or use `spoz2 add ...`.
+
+gist:
+    SPOZ2 makes explicit what something is supposed to do, in a form humans and
+    machines can understand and maintain as intent evolves. This project is the
+    open SPOZ2 file format and the spoz2 command-line tool for creating,
+    checking and maintaining SPOZ2 files beside source code.
+
+behaviours:
+    - A project can declare its intent in a root file named SPOZ2, kept beside
+      its source.
+    - Additional or standalone intent can be kept in .spoz2 documents using the
+      same format.
+    - Humans can read and edit these files directly in any text editor.
+    - Software can validate their deterministic structure (spoz2 check) and
+      report problems with file and line numbers.
+    - Entries can be added from the command line while working (spoz2 add),
+      without disturbing the rest of the file.
+    - From any subdirectory, the nearest SPOZ2 is found by walking upward (spoz2
+      show, check, add, log, diff).
+    - Git preserves the evolution of intent alongside the implementation (spoz2
+      log, spoz2 diff).
+
+invariants:
+    - The open format and the core CLI must not depend on the commercial
+      spoz2.do service; the file belongs to the project.
+    - A SPOZ2 describes intent - what the thing is supposed to do - not merely
+      its current implementation.
+    - External standards and policies are referenced, never copied into a SPOZ2.
+    - Changing intent is allowed; its history matters and lives in Git, not in a
+      separate versioning mechanism.
+    - Deterministic validation (spoz2 check) must not pretend to prove semantic
+      quality; 'valid structure' is not 'good product thinking'.
+    - Humans and AI must be able to understand the format without specialised or
+      proprietary tooling.
+    - The tool never silently overwrites or reformats a user's file: init
+      refuses to overwrite, add inserts lines and keeps existing text and
+      comments.
+    - The root intent file is named SPOZ2 with no extension; further documents
+      use .spoz2; 'spoz2.do' is the product brand and never a filename.
+
+constraints:
+    - Implemented in straightforward Raku using core modules only; the only
+      runtime needs are Rakudo and, for log/diff, Git.
+    - Works completely offline: no network, telemetry, accounts, API keys,
+      database or cloud.
+    - Plain terminals and SSH: no TUI and no terminal-UI libraries; terse
+      output, no banners.
+    - Plain-text, line-based format (not JSON, not YAML) so Git diffs stay clean
+      and humans can edit by hand.
+    - Unknown sections must be preserved and reported as warnings, not errors,
+      so the format can evolve without breaking older files.
+
+decisions:
+    - 2026-08-23: This project is Customer Zero. SPOZ2's own SPOZ2 is the first
+      real use, and the format changes only from what that use teaches.
+    - 2026-08-23: Raku, so the author can read and change the tool quickly;
+      startup time and portability matter more than cleverness.
+    - 2026-08-23: The format is a tiny line-based grammar (header, 'name:'
+      sections, indented '- ' entries) rather than JSON/YAML or a DSL;
+      continuation lines join with a space, so entries can be wrapped.
+    - 2026-08-23: History and diffs come from Git. spoz2 log/diff are thin
+      wrappers; there is no internal version control.
+    - 2026-08-23: 'decisions' and 'direction' became known sections during
+      dogfooding, because there was nowhere to record why choices were made or
+      where intent is heading without presenting it as implemented behaviour.
+
+direction:
+    - Make a SPOZ2 directly useful to AI coding tools that simply read it;
+      later, possibly a command that prints a compact context block for them.
+    - The wider spoz2.com/spoz2.do vision (registry, certification, commitments,
+      standards intelligence) is out of scope for this CLI and must not leak
+      into the open format.
+
+references:

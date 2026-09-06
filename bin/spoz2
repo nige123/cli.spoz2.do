@@ -1,0 +1,91 @@
+#!/usr/bin/env raku
+# spoz2 — maintain the SPOZ2 (what this project is supposed to do) beside your source.
+
+use lib $*PROGRAM.resolve.parent(2).add('lib').Str;   # run from a checkout without installing
+use SPOZ2;
+use SPOZ2::Document;
+
+my %*SUB-MAIN-OPTS = :named-anywhere;
+
+sub USAGE() {
+    print q:to/END/;
+    Usage:
+      spoz2 init                         create a SPOZ2 here
+      spoz2 show [FILE] [SECTION]        print the SPOZ2, or one section
+      spoz2 check [FILE]                 validate structure (exit 1 on errors)
+      spoz2 add KIND TEXT [--file=FILE]  add an entry; KIND is one of
+                                           gist behaviour invariant constraint decision
+                                           direction reference
+                                           (gist needs --replace once set)
+      spoz2 log [FILE]                   Git history of the SPOZ2
+      spoz2 diff [FILE] [REV [REV]]      Git diff of the SPOZ2
+
+    FILE is an explicit .spoz2 document; otherwise the nearest SPOZ2 in this
+    directory or its parents is used.
+    END
+}
+
+# Run a command body; user errors become one-line messages and exit 1.
+sub attempt(&body) {
+    my $rc = body() // 0;
+    exit $rc;
+    CATCH {
+        when X::SPOZ2 { note .message; exit 1 }
+    }
+}
+
+multi MAIN('init') {
+    attempt {
+        my $path = init();
+        say "Created {$path.basename}";
+        0;
+    }
+}
+
+multi MAIN('show', Str $a?, Str $b?) {
+    attempt {
+        my ($file, $section) = $a.defined && looks-like-file($a) ?? ($a, $b) !! (Str, $a);
+        user-error("too many arguments") if $b.defined && !$file.defined;
+        print show-text(resolve-target($file), $section);
+        0;
+    }
+}
+
+multi MAIN('check', Str $file?) {
+    attempt {
+        my $path = resolve-target($file);
+        my $name = display-name($path);
+        my $doc  = check-doc($path);
+        .say for $doc.report(:$name);
+        if $doc.ok { say "OK $name"; 0 } else { 1 }
+    }
+}
+
+multi MAIN('add', Str $kind, Str $text, Str :$file, Bool :$replace = False) {
+    attempt {
+        my $section = add-entry(resolve-target($file), $kind, $text, :$replace);
+        say $kind eq 'gist' ?? 'Set gist.' !! "Added $kind.";
+        0;
+    }
+}
+
+multi MAIN('log', Str $file?) {
+    attempt {
+        print log-text(resolve-target($file));
+        0;
+    }
+}
+
+multi MAIN('diff', *@args) {
+    attempt {
+        my $file = @args && looks-like-file(@args[0]) ?? @args.shift !! Str;
+        user-error("diff takes at most two revisions") if @args > 2;
+        my ($rc, $out, $err) = diff-result(resolve-target($file), |@args);
+        if $rc == 127 { say $err.trim; return 0 }      # no Git: informational, like log
+        print $out;
+        note $err.trim if $err.trim ne '';
+        $rc;
+    }
+}
+
+sub user-error(Str $message) { X::SPOZ2.new(:$message).throw }

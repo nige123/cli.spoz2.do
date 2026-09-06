@@ -1,0 +1,72 @@
+use lib $?FILE.IO.parent.add('lib').Str;
+use Test;
+use SPOZ2Test;
+use SPOZ2;
+use SPOZ2::Document;
+
+plan 27;
+
+my $dir = temp-dir;
+
+# init
+my $path = init(:$dir);
+ok $path.f, 'init creates SPOZ2';
+is $path.basename, 'SPOZ2', 'root file is named SPOZ2';
+like $path.slurp, /^ 'SPOZ2 0.1' \n/, 'file starts with header';
+throws-like { init(:$dir) }, X::SPOZ2, message => /'already exists'/, 'init refuses to overwrite';
+nok check-doc($path).ok, 'freshly initialised SPOZ2 does not pass check (placeholder gist)';
+
+# add
+is add-entry($path, 'gist', 'A test project.'), 'gist', 'add gist on placeholder';
+throws-like { add-entry($path, 'gist', 'Other.') }, X::SPOZ2, message => /'--replace'/,
+    'replacing gist needs --replace';
+add-entry($path, 'gist', 'Replaced gist.', :replace);
+is check-doc($path).section('gist').text, 'Replaced gist.', 'gist replaced deliberately';
+
+add-entry($path, 'invariant', 'Only one active session may exist per user.');
+add-entry($path, 'invariant', 'Second invariant.');
+add-entry($path, 'behaviour', 'A user can request a sign-in code by email.');
+add-entry($path, 'constraint', 'Must work without client-side JavaScript.');
+add-entry($path, 'reference', 'eu-cra: Article 13');
+my $doc = check-doc($path);
+ok $doc.ok, 'document valid after adds';
+is $doc.section('invariants').items».text,
+    ('Only one active session may exist per user.', 'Second invariant.'), 'add invariant appends in order';
+is $doc.section('behaviours').items».text, ('A user can request a sign-in code by email.',), 'add behaviour works';
+is $doc.section('constraints').items».text, ('Must work without client-side JavaScript.',), 'add constraint works';
+is $doc.section('references').items».text, ('eu-cra: Article 13',), 'add reference works';
+throws-like { add-entry($path, 'thing', 'x') }, X::SPOZ2, message => /'unknown kind'/, 'unknown kind rejected';
+add-entry($path, 'decision', 'Raku, because it is quick to change.');
+add-entry($path, 'direction', 'A context command for AI tools.');
+is check-doc($path).section('decisions').items».text, ('Raku, because it is quick to change.',), 'add decision works';
+is check-doc($path).section('direction').items».text, ('A context command for AI tools.',), 'add direction works';
+
+# long entries are wrapped losslessly
+my $long = ('word' xx 40).join(' ');
+add-entry($path, 'constraint', $long);
+ok $path.slurp.lines.grep(*.chars > 80) == 0, 'add wraps entries at 80 columns';
+is check-doc($path).section('constraints').items[*-1].text, $long, 'wrapped entry reads back unchanged';
+throws-like { add-entry($path, 'invariant', '  ') }, X::SPOZ2, message => /'empty'/, 'empty text rejected';
+
+# add to a file whose section is missing appends a new section
+my $mini = $dir.add('mini.spoz2');
+$mini.spurt("SPOZ2 0.1\n\ngist:\n    Mini.\n");
+add-entry($mini, 'constraint', 'Added to missing section.');
+is check-doc($mini).section('constraints').items[0].text, 'Added to missing section.', 'missing section is created';
+add-entry($mini, 'behaviour', 'Goes before constraints.');
+is $mini.slurp, "SPOZ2 0.1\n\ngist:\n    Mini.\n\nbehaviours:\n    - Goes before constraints.\n\nconstraints:\n    - Added to missing section.\n",
+    'missing section is created in canonical order';
+
+# show
+is show-text($path, 'gist'), "Replaced gist.\n", 'show gist';
+is show-text($path, 'invariants'), "- Only one active session may exist per user.\n- Second invariant.\n", 'show list section';
+is show-text($path), $path.slurp, 'show whole document';
+
+# discovery
+my $nested = $dir.add('src/foo/bar');
+$nested.mkdir;
+is find-root($nested), $path, 'upward lookup from nested directory';
+is resolve-target(Str, :cwd($nested)), $path, 'resolve-target uses nearest SPOZ2';
+my $lonely = temp-dir;
+throws-like { resolve-target(Str, :cwd($lonely)) }, X::SPOZ2,
+    message => /'No SPOZ2 found' .* "spoz2 init"/, 'no SPOZ2 gives actionable error';

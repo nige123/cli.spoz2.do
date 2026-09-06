@@ -1,0 +1,18 @@
+{
+    "name": "SPOZ2",
+    "description": "spoz2: maintain a SPOZ2 (what this project is supposed to do) beside your source",
+    "version": "0.1.0",
+    "auth": "spoz2.do",
+    "license": "MIT",
+    "perl": "6.d",
+    "provides": {
+        "SPOZ2": "lib/SPOZ2.rakumod",
+        "SPOZ2::Document": "lib/SPOZ2/Document.rakumod",
+        "SPOZ2::Git": "lib/SPOZ2/Git.rakumod"
+    },
+    "depends": [],
+    "test-depends": [],
+    "resources": [],
+    "tags": ["cli", "intent", "documentation", "spoz2"],
+    "source-url": ""
+}

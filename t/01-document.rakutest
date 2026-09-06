@@ -1,0 +1,74 @@
+use Test;
+use SPOZ2::Document;
+
+plan 26;
+
+my $valid = q:to/END/;
+    SPOZ2 0.1
+
+    # a comment
+    gist:
+        A small tool for testing.
+        Second line of gist.
+
+    behaviours:
+        - Does X.
+        - Does Y,
+          continued.
+
+    invariants:
+        - X must always remain true.
+
+    constraints:
+
+    references:
+        - eu-cra: Article 13
+    END
+
+my $doc = SPOZ2::Document.parse($valid);
+ok $doc.ok, 'valid document has no errors';
+is $doc.version, '0.1', 'version parsed';
+is $doc.sections».name, <gist behaviours invariants constraints references>, 'sections in order';
+is $doc.section('gist').text, "A small tool for testing.\nSecond line of gist.", 'gist text';
+is $doc.section('behaviours').items».text, ('Does X.', 'Does Y, continued.'), 'items with continuation';
+is $doc.section('behaviours').items[1].line, 10, 'item line number';
+is $doc.section('references').items[0].text, 'eu-cra: Article 13', 'reference text';
+ok $doc.section('constraints').is-empty, 'empty section is allowed';
+is $doc.section('invariants').last-line, 14, 'last content line tracked';
+is $doc.section('invariants').indent, '    ', 'indent tracked';
+
+# duplicate sections
+my $dup = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    hi\n\ninvariants:\n\ninvariants:\n");
+nok $dup.ok, 'duplicate section fails';
+is $dup.report.join("\n"), "SPOZ2:8: duplicate section 'invariants' (first defined at line 6)", 'duplicate reported with line';
+
+# gist problems
+my $empty = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n\nbehaviours:\n");
+nok $empty.ok, 'empty gist fails';
+is $empty.report.join("\n"), 'SPOZ2:3: gist is empty', 'empty gist reported';
+
+my $placeholder = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    {GIST-PLACEHOLDER}\n");
+nok $placeholder.ok, 'placeholder gist fails';
+like $placeholder.report[0], /placeholder/, 'placeholder reported';
+
+my $nogist = SPOZ2::Document.parse("SPOZ2 0.1\n\nbehaviours:\n    - x\n");
+like $nogist.report.join, /"missing 'gist:'"/, 'missing gist reported';
+
+# header
+like SPOZ2::Document.parse("gist:\n    hi\n").report[0], /^ 'SPOZ2:1: expected' /, 'missing header reported at line 1';
+like SPOZ2::Document.parse('').report.join, /'file is empty'/, 'empty file reported';
+my $ver = SPOZ2::Document.parse("SPOZ2 0.9\n\ngist:\n    hi\n");
+ok $ver.ok, 'unknown version is not an error';
+is $ver.warnings.elems, 1, 'unknown version warns';
+
+# malformed entries
+my $bad = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    hi\n\ninvariants:\n    not an item\n    -\nstray\n");
+is $bad.errors».line, (7, 8, 9), 'malformed lines reported with correct line numbers';
+like $bad.report[0], /"expected a '- ' entry"/, 'non-item in list section';
+like $bad.report[1], /'empty entry'/, 'empty item';
+like $bad.report[2], /'unexpected text at column 0'/, 'stray text';
+
+# unknown sections are preserved, with a warning
+my $unk = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    hi\n\nrisks:\n    - We chose Raku.\n");
+ok $unk.ok && $unk.warnings == 1 && $unk.section('risks').items[0].text eq 'We chose Raku.',
+    'unknown section kept, warned about, not an error';
