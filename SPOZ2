@@ -68,6 +68,11 @@ decisions:
     - 2026-08-23: 'decisions' and 'direction' became known sections during
       dogfooding, because there was nowhere to record why choices were made or
       where intent is heading without presenting it as implemented behaviour.
+    - 2026-09-06: The user ruled this dialect (SPOZ2 0.1 header, gist/sections,
+      git-kept history) is THE SPOZ2 format, superseding the version-bound
+      since/until dialect. This tool is now the public reference implementation
+      at github.com/nige123/cli.spoz2.do; the earlier dialect's repo is
+      preserved as nige123/spoz2-versioned-prototype.
 
 direction:
     - Make a SPOZ2 directly useful to AI coding tools that simply read it;
