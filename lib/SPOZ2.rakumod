@@ -82,6 +82,78 @@ sub init(IO::Path :$dir = $*CWD --> IO::Path) is export {
     $path;
 }
 
+#| The agent command behind `spoz2 init`: overridable, external, optional.
+sub agent-cmd(--> Str) is export { %*ENV<SPOZ2_AGENT_CMD> // 'claude -p' }
+
+#| One agent attempt at the first real specification: the scaffold plus
+#| bounded evidence from the codebase goes to the agent command; the reply
+#| must parse clean with a real gist and at least one invariant, or we die.
+sub agent-init-draft(IO::Path $dir = $*CWD, Str :$cmd = agent-cmd() --> Str) is export {
+    my $prompt = q:to/END/ ~ template() ~ "\nEvidence from the codebase:\n" ~ gather-context($dir);
+        Complete the SPOZ2 scaffold below into the first real specification
+        for the codebase whose evidence follows it.  Keep the format header
+        and the conventions comment.  Replace the gist placeholder with what
+        the system is FOR, in a few plain sentences.  Fill behaviours (what
+        a user can do or observe) and 3 to 7 invariants (the rules someone
+        would be upset to see silently broken), each a self-contained '- '
+        entry indented four spaces, wrapped at 80 columns.  Add constraints
+        only where the evidence states a real limit; leave decisions,
+        direction and references empty rather than guessing.  State intent,
+        never implementation detail, and only what the evidence supports -
+        fewer good entries beat many guessed ones.  Reply with ONLY the
+        completed file content: no fences, no commentary.
+
+        The scaffold:
+        END
+
+    note "asking agent ($cmd) to distill {$dir.resolve} ...";
+    my $proc = run '/bin/sh', '-c', $cmd, :in, :out;
+    $proc.in.print($prompt);
+    my $ = $proc.in.close;               # sunk, a failed Proc would throw here
+    my $reply = $proc.out.slurp(:close);
+    die "agent command failed ($cmd)" if $proc.exitcode != 0;
+
+    # Tolerate fences and chatter: the file starts at its header line.
+    my @lines = $reply.lines.grep({ !.starts-with('```') });
+    my $start = @lines.first(*.starts-with('SPOZ2 '), :k)
+        // die "no 'SPOZ2 {FORMAT-VERSION}' header in the agent reply";
+    my $text = @lines[$start .. *].join("\n") ~ "\n";
+
+    my $doc = SPOZ2::Document.parse($text);
+    die "draft has problems - {$doc.errors.map(*.Str).join('; ')}" if $doc.errors;
+    die "draft has no invariants"
+        unless $doc.section('invariants') && $doc.section('invariants').items;
+    $text;
+}
+
+#| Bounded evidence for the distilling agent: the codebase's own account
+#| of itself (README, changelog, file layout), never the whole tree.
+sub gather-context(IO::Path $dir --> Str) is export {
+    my @parts;
+    for <README.md README.txt README>, <CHANGES.md CHANGELOG.md Changes> -> @names {
+        for @names -> $f {
+            next unless $dir.add($f).f;
+            @parts.push: "--- $f (head) ---\n" ~ $dir.add($f).slurp.lines.head(80).join("\n");
+            last;
+        }
+    }
+    my @files = walk($dir, 3).map(*.relative($dir)).sort.head(60);
+    @parts.push: "--- file layout (up to 60 files) ---\n" ~ @files.join("\n");
+    @parts.join("\n\n");
+}
+
+#| Files under $dir to a limited depth, skipping housekeeping directories.
+sub walk(IO::Path $dir, Int $depth) {
+    return () if $depth == 0;
+    my @out;
+    for (try $dir.dir.sort) // () -> $entry {
+        next if $entry.basename eq any(<.git node_modules .precomp local>);
+        if $entry.d { @out.append: walk($entry, $depth - 1) }
+        else        { @out.push: $entry }
+    }
+    @out;
+}
+
 # ---------------------------------------------------------------- show
 
 #| Text of the whole document, or of one section (dedented body only).

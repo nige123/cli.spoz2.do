@@ -10,7 +10,11 @@ my %*SUB-MAIN-OPTS = :named-anywhere;
 sub USAGE() {
     print q:to/END/;
     Usage:
-      spoz2 init                         create a SPOZ2 here
+      spoz2 init [--/agent]              create a SPOZ2 here: an agent command
+                                           (SPOZ2_AGENT_CMD, default 'claude -p')
+                                           drafts it from the codebase's own
+                                           account of itself; --/agent, or no
+                                           working agent, writes the scaffold
       spoz2 show [FILE] [SECTION]        print the SPOZ2, or one section
       spoz2 check [FILE]                 validate structure (exit 1 on errors)
       spoz2 add KIND TEXT [--file=FILE]  add an entry; KIND is one of
@@ -34,10 +38,30 @@ sub attempt(&body) {
     }
 }
 
-multi MAIN('init') {
+multi MAIN('init', Bool :$agent = True) {
     attempt {
-        my $path = init();
-        say "Created {$path.basename}";
+        user-error("SPOZ2 already exists here; not overwriting") if $*CWD.add('SPOZ2').e;
+        my $text;
+        if $agent {
+            for 1, 2 -> $attempt {
+                $text = try agent-init-draft($*CWD);
+                last with $text;
+                note "agent draft attempt $attempt failed: {$!.message.lines.head}";
+            }
+            note "falling back to the plain scaffold - distill it by hand, or delete SPOZ2 and rerun spoz2 init"
+                without $text;
+        }
+        with $text {
+            my $path = $*CWD.add('SPOZ2');
+            $path.spurt($text);
+            my $invariants = check-doc($path).section('invariants').items.elems;
+            say "Created {$path.basename} ($invariants invariants, agent-drafted)";
+            note "review it - the draft states intent, and only the maintainer knows intent.";
+        }
+        else {
+            my $path = init();
+            say "Created {$path.basename}";
+        }
         0;
     }
 }

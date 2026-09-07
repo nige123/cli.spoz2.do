@@ -2,7 +2,10 @@ use lib $?FILE.IO.parent.add('lib').Str;
 use Test;
 use SPOZ2Test;
 
-plan 12;
+plan 22;
+
+# Never let a test reach a real agent.
+%*ENV<SPOZ2_AGENT_CMD> = 'false';
 
 my $dir = temp-dir;
 
@@ -10,9 +13,9 @@ my ($rc, $out, $err) = spoz2($dir, 'check');
 is $rc, 1, 'check without SPOZ2 exits 1';
 is $err, "No SPOZ2 found in this directory or its parents.\nRun 'spoz2 init' to create one.\n", 'actionable message';
 
-($rc, $out, $err) = spoz2($dir, 'init');
+($rc, $out, $err) = spoz2($dir, 'init', '--/agent');
 is ($rc, $out), (0, "Created SPOZ2\n"), 'init output';
-($rc, $out, $err) = spoz2($dir, 'init');
+($rc, $out, $err) = spoz2($dir, 'init', '--/agent');
 is $rc, 1, 'second init fails';
 like $err, /'already exists'/, 'second init explains';
 
@@ -35,3 +38,52 @@ $nested.add('security.spoz2').spurt("SPOZ2 0.1\n\ngist:\n    Security intent.\n\
 is ($rc, $out), (0, "OK security.spoz2\n"), 'explicit .spoz2 checked';
 ($rc, $out, $err) = spoz2($nested, 'show', 'security.spoz2', 'invariants');
 is $out, "- Secrets never logged.\n", 'show section of explicit .spoz2';
+
+# agent-assisted init: a good draft lands, validated
+my $drafted = temp-dir;
+my $reply = $drafted.add('reply.txt');
+$reply.spurt(qq:to/END/);
+    Here is the completed file:
+    ```
+    SPOZ2 0.1
+
+    gist:
+        A fake project, distilled by a fake agent.
+
+    behaviours:
+        - Someone can do the thing.
+
+    invariants:
+        - The thing never breaks.
+        - The other thing holds.
+    ```
+    END
+%*ENV<SPOZ2_AGENT_CMD> = "cat {$reply}";
+($rc, $out, $err) = spoz2($drafted, 'init');
+is ($rc, $out), (0, "Created SPOZ2 (2 invariants, agent-drafted)\n"), 'agent init reports the draft';
+like $err, /'review it'/, 'agent init asks for review';
+($rc, $out, $err) = spoz2($drafted, 'check');
+is ($rc, $out), (0, "OK SPOZ2\n"), 'agent-drafted SPOZ2 passes check';
+
+# a dead agent command falls back to the scaffold, loudly
+my $fallback = temp-dir;
+%*ENV<SPOZ2_AGENT_CMD> = 'false';
+($rc, $out, $err) = spoz2($fallback, 'init');
+is ($rc, $out), (0, "Created SPOZ2\n"), 'fallback still creates the scaffold';
+like $err, /'attempt 1 failed' .* 'attempt 2 failed' .* 'falling back to the plain scaffold'/,
+    'fallback is loud after two attempts';
+like $fallback.add('SPOZ2').slurp, /'<What is this thing supposed to do?>'/, 'fallback wrote the scaffold';
+
+# a nonsense reply fails validation and also falls back
+my $nonsense = temp-dir;
+%*ENV<SPOZ2_AGENT_CMD> = 'echo not a spec';
+($rc, $out, $err) = spoz2($nonsense, 'init');
+is ($rc, $out), (0, "Created SPOZ2\n"), 'nonsense reply falls back to the scaffold';
+like $err, /"no 'SPOZ2 0.1' header"/, 'the validation failure is reported';
+
+# --/agent never runs the agent
+my $manual = temp-dir;
+%*ENV<SPOZ2_AGENT_CMD> = 'echo SHOULD-NOT-RUN';
+($rc, $out, $err) = spoz2($manual, 'init', '--/agent');
+is ($rc, $out), (0, "Created SPOZ2\n"), '--/agent writes the scaffold';
+unlike $err, /'asking agent'/, '--/agent does not consult the agent';

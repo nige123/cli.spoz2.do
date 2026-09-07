@@ -24,6 +24,12 @@ behaviours:
       show, check, add, log, diff).
     - Git preserves the evolution of intent alongside the implementation (spoz2
       log, spoz2 diff).
+    - spoz2 init drafts the first specification from the codebase's own account
+      of itself (README, changelog, file layout): it hands the scaffold plus
+      that evidence to a configurable agent command and validates the draft
+      before writing it. Without a working agent, init falls back to the plain
+      scaffold, loudly, so it always leaves a file. --/agent skips the agent
+      deliberately.
 
 invariants:
     - The open format and the core CLI must not depend on the commercial
@@ -45,9 +51,12 @@ invariants:
 
 constraints:
     - Implemented in straightforward Raku using core modules only; the only
-      runtime needs are Rakudo and, for log/diff, Git.
-    - Works completely offline: no network, telemetry, accounts, API keys,
-      database or cloud.
+      runtime needs are Rakudo and, for log/diff, Git. Agent-assisted init
+      shells out to an external agent command the same way and degrades to the
+      scaffold without one.
+    - The CLI itself works completely offline: no network, telemetry, accounts,
+      API keys, database or cloud. Only the optional agent command behind init
+      may reach the network, and init still works (scaffold) without it.
     - Plain terminals and SSH: no TUI and no terminal-UI libraries; terse
       output, no banners.
     - Plain-text, line-based format (not JSON, not YAML) so Git diffs stay clean
@@ -73,6 +82,12 @@ decisions:
       since/until dialect. This tool is now the public reference implementation
       at github.com/nige123/cli.spoz2.do; the earlier dialect's repo is
       preserved as nige123/spoz2-versioned-prototype.
+    - 2026-09-07: init is agent-assisted by default (ported from the versioned
+      prototype) because a scaffold-only init kept surprising the maintainer -
+      the point of init is extracting what the project is supposed to do. The
+      agent is an external command (SPOZ2_AGENT_CMD, default 'claude -p')
+      shelled out to like Git: the CLI itself makes no network calls and still
+      works without it.
 
 direction:
     - Make a SPOZ2 directly useful to AI coding tools that simply read it;
@@ -82,3 +97,4 @@ direction:
       into the open format.
 
 references:
+    - licence: Apache-2.0 (LICENSE file; also declared in META6.json)

@@ -37,9 +37,20 @@ the current directory.
 
 ```text
 $ spoz2 init
-Created SPOZ2
+asking agent (claude -p) to distill /home/you/signin-codes ...
+Created SPOZ2 (4 invariants, agent-drafted)
+review it - the draft states intent, and only the maintainer knows intent.
+```
 
-$ spoz2 add gist "A tiny service that issues and verifies sign-in codes."
+By default `init` drafts the first real specification for you: it hands the
+scaffold plus the codebase's own account of itself (README, changelog, file
+layout) to an agent command — `SPOZ2_AGENT_CMD`, default `claude -p` — and
+validates the draft before writing it. Without a working agent it falls back
+to a plain scaffold, loudly. `spoz2 init --/agent` skips the agent and writes
+the scaffold deliberately. Either way, the file is then yours to maintain:
+
+```text
+$ spoz2 add gist --replace "A tiny service that issues and verifies sign-in codes."
 Set gist.
 
 $ spoz2 add invariant "Only one active session may exist per user."
@@ -65,7 +76,9 @@ $ spoz2 diff HEAD~1
 ## Commands
 
 ```text
-spoz2 init                         create a SPOZ2 in the current directory (never overwrites)
+spoz2 init [--/agent]              create a SPOZ2 in the current directory (never overwrites);
+                                   an agent command (SPOZ2_AGENT_CMD, default `claude -p`)
+                                   drafts it from the codebase; --/agent writes the scaffold
 spoz2 show [FILE] [SECTION]        print the SPOZ2, or one section (e.g. `spoz2 show gist`)
 spoz2 check [FILE]                 validate structure; exit 1 on errors
 spoz2 add KIND TEXT [--file=FILE]  append an entry; KIND is gist, behaviour, invariant,
@@ -157,8 +170,14 @@ prove --ext .rakutest -e 'raku -Ilib' t/
 
 - The format and this CLI are open and useful without any service. The file
   belongs to the project.
-- No network, no telemetry, no accounts, no database, no TUI.
+- No network, no telemetry, no accounts, no database, no TUI. The one
+  exception is the optional agent command behind `init`, which is external,
+  visible and skippable; the CLI itself never touches the network.
 - History comes from Git, not from an invented versioning scheme.
 - Deterministic validation is not a judgement of product thinking.
 
 This project keeps its own `SPOZ2`. Read it.
+
+## Licence
+
+Apache-2.0 — see `LICENSE`.
