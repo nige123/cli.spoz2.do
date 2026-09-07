@@ -3,7 +3,7 @@
     "description": "spoz2: maintain a SPOZ2 (what this project is supposed to do) beside your source",
     "version": "0.1.0",
     "auth": "spoz2.do",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "perl": "6.d",
     "provides": {
         "SPOZ2": "lib/SPOZ2.rakumod",
