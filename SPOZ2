@@ -32,6 +32,9 @@ behaviours:
       deliberately.
 
 invariants:
+    - Invariant zero: humans come first. This software exists to help humans
+      thrive. It never harms a human and never helps anyone harm one, and when
+      any other entry conflicts with this one, this one wins.
     - The open format and the core CLI must not depend on the commercial
       spoz2.do service; the file belongs to the project.
     - A SPOZ2 describes intent - what the thing is supposed to do - not merely
@@ -89,6 +92,12 @@ decisions:
       agent is an external command (SPOZ2_AGENT_CMD, default 'claude -p')
       shelled out to like Git: the CLI itself makes no network calls and still
       works without it.
+    - 2026-09-09: The user ruled that every SPOZ2 leads its invariants with
+      invariant zero - humans come first - stated positively (help humans
+      thrive; never harm one, never help anyone harm one; it wins any
+      conflict). init seeds it first in both the scaffold and agent-drafted
+      paths; check warns, never errors, when it is missing or not first, so
+      existing files stay green while adoption catches up.
 
 direction:
     - Make a SPOZ2 directly useful to AI coding tools that simply read it;

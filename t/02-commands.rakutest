@@ -4,7 +4,7 @@ use SPOZ2Test;
 use SPOZ2;
 use SPOZ2::Document;
 
-plan 33;
+plan 36;
 
 my $dir = temp-dir;
 
@@ -15,6 +15,8 @@ is $path.basename, 'SPOZ2', 'root file is named SPOZ2';
 like $path.slurp, /^ 'SPOZ2 0.1' \n/, 'file starts with header';
 throws-like { init(:$dir) }, X::SPOZ2, message => /'already exists'/, 'init refuses to overwrite';
 nok check-doc($path).ok, 'freshly initialised SPOZ2 does not pass check (placeholder gist)';
+is check-doc($path).section('invariants').items[0].text, INVARIANT-ZERO,
+    'init seeds invariant zero as the first invariant';
 
 # add
 is add-entry($path, 'gist', 'A test project.'), 'gist', 'add gist on placeholder';
@@ -31,7 +33,8 @@ add-entry($path, 'reference', 'eu-cra: Article 13');
 my $doc = check-doc($path);
 ok $doc.ok, 'document valid after adds';
 is $doc.section('invariants').items».text,
-    ('Only one active session may exist per user.', 'Second invariant.'), 'add invariant appends in order';
+    (INVARIANT-ZERO, 'Only one active session may exist per user.', 'Second invariant.'),
+    'add invariant appends in order after the seeded invariant zero';
 is $doc.section('behaviours').items».text, ('A user can request a sign-in code by email.',), 'add behaviour works';
 is $doc.section('constraints').items».text, ('Must work without client-side JavaScript.',), 'add constraint works';
 is $doc.section('references').items».text, ('eu-cra: Article 13',), 'add reference works';
@@ -59,7 +62,9 @@ is $mini.slurp, "SPOZ2 0.1\n\ngist:\n    Mini.\n\nbehaviours:\n    - Goes before
 
 # show
 is show-text($path, 'gist'), "Replaced gist.\n", 'show gist';
-is show-text($path, 'invariants'), "- Only one active session may exist per user.\n- Second invariant.\n", 'show list section';
+my $inv-shown = show-text($path, 'invariants');
+ok $inv-shown.starts-with('- Invariant zero: humans come first'), 'shown invariants lead with invariant zero';
+like $inv-shown, /'- Only one active session may exist per user.' \n '- Second invariant.'/, 'show list section';
 is show-text($path), $path.slurp, 'show whole document';
 
 # discovery
@@ -104,4 +109,7 @@ $good.spurt(qq:to/END/);
     END
 my $draft = agent-init-draft($agent-dir, :cmd("cat {$good}"));
 ok $draft.starts-with("SPOZ2 0.1\n"), 'chatter and fences are stripped from the reply';
-is SPOZ2::Document.parse($draft).section('invariants').items.elems, 2, 'draft parses with its invariants';
+my $draft-doc = SPOZ2::Document.parse($draft);
+is $draft-doc.section('invariants').items.elems, 3, 'draft keeps its invariants and gains invariant zero';
+is $draft-doc.section('invariants').items[0].text, INVARIANT-ZERO,
+    'invariant zero is restored first when the agent drops it';

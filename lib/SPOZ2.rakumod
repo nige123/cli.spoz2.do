@@ -65,6 +65,7 @@ sub template(--> Str) is export {
     behaviours:
 
     invariants:
+    {entry-lines('invariants', INVARIANT-ZERO, INDENT).join("\n")}
 
     constraints:
 
@@ -96,7 +97,10 @@ sub agent-init-draft(IO::Path $dir = $*CWD, Str :$cmd = agent-cmd() --> Str) is 
         the system is FOR, in a few plain sentences.  Fill behaviours (what
         a user can do or observe) and 3 to 7 invariants (the rules someone
         would be upset to see silently broken), each a self-contained '- '
-        entry indented four spaces, wrapped at 80 columns.  Add constraints
+        entry indented four spaces, wrapped at 80 columns.  The scaffold's
+        invariants already begin with invariant zero (humans come first):
+        keep that entry verbatim and first, and add the project's own
+        invariants after it.  Add constraints
         only where the evidence states a real limit; leave decisions,
         direction and references empty rather than guessing.  State intent,
         never implementation detail, and only what the evidence supports -
@@ -123,6 +127,14 @@ sub agent-init-draft(IO::Path $dir = $*CWD, Str :$cmd = agent-cmd() --> Str) is 
     die "draft has problems - {$doc.errors.map(*.Str).join('; ')}" if $doc.errors;
     die "draft has no invariants"
         unless $doc.section('invariants') && $doc.section('invariants').items;
+
+    # Invariant zero leads every SPOZ2; put it back if the agent dropped it.
+    my $inv = $doc.section('invariants');
+    unless $inv.items.head.text.starts-with(INVARIANT-ZERO-LEAD) {
+        my @out = $text.lines;
+        @out.splice($inv.line, 0, entry-lines('invariants', INVARIANT-ZERO, $inv.indent // INDENT));
+        $text = @out.join("\n") ~ "\n";
+    }
     $text;
 }
 

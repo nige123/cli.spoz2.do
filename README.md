@@ -33,6 +33,22 @@ A large repository may contain several root-style `SPOZ2` files (for example
 one per service). `spoz2` uses the nearest one found by walking upward from
 the current directory.
 
+## Invariant zero
+
+Every SPOZ2 leads its invariants with the same first entry:
+
+```text
+invariants:
+    - Invariant zero: humans come first. This software exists to help humans
+      thrive. It never harms a human and never helps anyone harm one, and when
+      any other entry conflicts with this one, this one wins.
+```
+
+It is universal and it always comes first; no later entry may weaken it.
+`spoz2 init` seeds it in both the agent-drafted and plain-scaffold paths, and
+`spoz2 check` warns — never errors — when a file's first invariant is not
+invariant zero, so existing files keep passing while they adopt it.
+
 ## Quick start
 
 ```text
@@ -112,6 +128,9 @@ behaviours:
       onto a continuation line.
 
 invariants:
+    - Invariant zero: humans come first. This software exists to help humans
+      thrive. It never harms a human and never helps anyone harm one, and when
+      any other entry conflicts with this one, this one wins.
     - X must always remain true.
 
 constraints:
@@ -143,6 +162,8 @@ Rules:
   reported as a warning, not an error, so the format can grow.
 - A `reference` is a durable pointer to an external authority (a standard, a
   policy, a ticket). SPOZ2 references standards; it does not copy them in.
+- The first invariant is invariant zero (see above); `spoz2 check` warns when
+  it is missing or not first.
 
 `spoz2 add` edits the file in place by inserting lines (word-wrapped at 80
 columns) — it never rewrites your formatting or comments. Your editor remains

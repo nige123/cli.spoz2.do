@@ -2,7 +2,7 @@ use lib $?FILE.IO.parent.add('lib').Str;
 use Test;
 use SPOZ2Test;
 
-plan 22;
+plan 23;
 
 # Never let a test reach a real agent.
 %*ENV<SPOZ2_AGENT_CMD> = 'false';
@@ -35,7 +35,9 @@ my $nested = $dir.add('docs');
 $nested.mkdir;
 $nested.add('security.spoz2').spurt("SPOZ2 0.1\n\ngist:\n    Security intent.\n\ninvariants:\n    - Secrets never logged.\n");
 ($rc, $out, $err) = spoz2($nested, 'check', 'security.spoz2');
-is ($rc, $out), (0, "OK security.spoz2\n"), 'explicit .spoz2 checked';
+is $rc, 0, 'explicit .spoz2 checked; invariant-zero warning is not an error';
+like $out, /"warning: invariant zero ('humans come first')" .* 'OK security.spoz2'/,
+    'missing invariant zero warns but the file still passes';
 ($rc, $out, $err) = spoz2($nested, 'show', 'security.spoz2', 'invariants');
 is $out, "- Secrets never logged.\n", 'show section of explicit .spoz2';
 
@@ -60,7 +62,8 @@ $reply.spurt(qq:to/END/);
     END
 %*ENV<SPOZ2_AGENT_CMD> = "cat {$reply}";
 ($rc, $out, $err) = spoz2($drafted, 'init');
-is ($rc, $out), (0, "Created SPOZ2 (2 invariants, agent-drafted)\n"), 'agent init reports the draft';
+is ($rc, $out), (0, "Created SPOZ2 (3 invariants, agent-drafted)\n"),
+    'agent init reports the draft (its invariants plus invariant zero)';
 like $err, /'review it'/, 'agent init asks for review';
 ($rc, $out, $err) = spoz2($drafted, 'check');
 is ($rc, $out), (0, "OK SPOZ2\n"), 'agent-drafted SPOZ2 passes check';

@@ -6,6 +6,16 @@ constant FORMAT-VERSION is export = '0.1';
 #| Placeholder gist written by `spoz2 init`.  `check` treats it as empty.
 constant GIST-PLACEHOLDER is export = '<What is this thing supposed to do?>';
 
+#| Invariant zero: every SPOZ2 leads its invariants with this entry.
+#| `init` seeds it and `check` warns when it is missing or not first.
+constant INVARIANT-ZERO is export = 'Invariant zero: humans come first. '
+    ~ 'This software exists to help humans thrive. It never harms a human '
+    ~ 'and never helps anyone harm one, and when any other entry conflicts '
+    ~ 'with this one, this one wins.';
+
+#| The lead that identifies invariant zero, however the rest is worded.
+constant INVARIANT-ZERO-LEAD is export = 'Invariant zero: humans come first';
+
 #| Known top-level sections, in canonical order, with their kind.
 #| 'text' sections hold free text; 'list' sections hold "- " entries.
 constant %SECTION-KIND is export =
@@ -201,5 +211,15 @@ method !validate() {
     for @!sections -> $s {
         next if %SECTION-KIND{$s.name}:exists;
         self!problem($s.line, "unknown section '{$s.name}'", :warning);
+    }
+
+    # Invariant zero leads every SPOZ2.  A warning, never an error, so
+    # existing files stay usable while they adopt it.
+    my $inv   = self.section('invariants');
+    my $first = $inv ?? $inv.items.head !! Nil;
+    unless $first.defined && $first.text.starts-with(INVARIANT-ZERO-LEAD) {
+        my $line = $first.defined ?? $first.line !! ($inv ?? $inv.line !! (@!lines.elems max 1));
+        self!problem($line, "invariant zero ('humans come first') should be the first invariant",
+            :warning);
     }
 }

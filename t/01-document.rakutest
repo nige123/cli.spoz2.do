@@ -1,7 +1,7 @@
 use Test;
 use SPOZ2::Document;
 
-plan 26;
+plan 29;
 
 my $valid = q:to/END/;
     SPOZ2 0.1
@@ -40,12 +40,12 @@ is $doc.section('invariants').indent, '    ', 'indent tracked';
 # duplicate sections
 my $dup = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    hi\n\ninvariants:\n\ninvariants:\n");
 nok $dup.ok, 'duplicate section fails';
-is $dup.report.join("\n"), "SPOZ2:8: duplicate section 'invariants' (first defined at line 6)", 'duplicate reported with line';
+like $dup.report.join("\n"), /"SPOZ2:8: duplicate section 'invariants' (first defined at line 6)"/, 'duplicate reported with line';
 
 # gist problems
 my $empty = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n\nbehaviours:\n");
 nok $empty.ok, 'empty gist fails';
-is $empty.report.join("\n"), 'SPOZ2:3: gist is empty', 'empty gist reported';
+like $empty.report.join("\n"), /'SPOZ2:3: gist is empty'/, 'empty gist reported';
 
 my $placeholder = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    {GIST-PLACEHOLDER}\n");
 nok $placeholder.ok, 'placeholder gist fails';
@@ -59,16 +59,24 @@ like SPOZ2::Document.parse("gist:\n    hi\n").report[0], /^ 'SPOZ2:1: expected' 
 like SPOZ2::Document.parse('').report.join, /'file is empty'/, 'empty file reported';
 my $ver = SPOZ2::Document.parse("SPOZ2 0.9\n\ngist:\n    hi\n");
 ok $ver.ok, 'unknown version is not an error';
-is $ver.warnings.elems, 1, 'unknown version warns';
+ok $ver.warnings».Str.grep(*.contains('unsupported SPOZ2 version')), 'unknown version warns';
 
 # malformed entries
 my $bad = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    hi\n\ninvariants:\n    not an item\n    -\nstray\n");
 is $bad.errors».line, (7, 8, 9), 'malformed lines reported with correct line numbers';
-like $bad.report[0], /"expected a '- ' entry"/, 'non-item in list section';
-like $bad.report[1], /'empty entry'/, 'empty item';
-like $bad.report[2], /'unexpected text at column 0'/, 'stray text';
+like $bad.errors[0].Str, /"expected a '- ' entry"/, 'non-item in list section';
+like $bad.errors[1].Str, /'empty entry'/, 'empty item';
+like $bad.errors[2].Str, /'unexpected text at column 0'/, 'stray text';
 
 # unknown sections are preserved, with a warning
 my $unk = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    hi\n\nrisks:\n    - We chose Raku.\n");
-ok $unk.ok && $unk.warnings == 1 && $unk.section('risks').items[0].text eq 'We chose Raku.',
+ok $unk.ok && $unk.warnings».Str.grep(*.contains("unknown section 'risks'")) && $unk.section('risks').items[0].text eq 'We chose Raku.',
     'unknown section kept, warned about, not an error';
+
+# invariant zero leads every SPOZ2 - a warning, never an error
+my $zeroless = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    hi\n\ninvariants:\n    - Something else first.\n");
+ok $zeroless.ok, 'a file without invariant zero still has no errors';
+like $zeroless.warnings».Str.join, /"invariant zero ('humans come first') should be the first invariant"/,
+    'missing invariant zero warns';
+my $zeroed = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    hi\n\ninvariants:\n    - " ~ INVARIANT-ZERO ~ "\n");
+nok $zeroed.warnings, 'invariant zero in first place satisfies the check';
