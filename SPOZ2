@@ -80,8 +80,9 @@ decisions:
     - 2026-09-06: The user ruled this dialect (SPOZ2 0.1 header, gist/sections,
       git-kept history) is THE SPOZ2 format, superseding the version-bound
       since/until dialect. This tool is now the public reference implementation
-      at github.com/nige123/cli.spoz2.do; the earlier dialect's repo is
-      preserved as nige123/spoz2-versioned-prototype.
+      at github.com/nige123/cli.spoz2.do; the earlier dialect's repo was
+      removed on 2026-09-07 and survives only as a local git bundle
+      (~/archive/app.spoz2.do-prototype.bundle).
     - 2026-09-07: init is agent-assisted by default (ported from the versioned
       prototype) because a scaffold-only init kept surprising the maintainer -
       the point of init is extracting what the project is supposed to do. The
