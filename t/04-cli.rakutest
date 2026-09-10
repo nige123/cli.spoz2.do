@@ -84,7 +84,7 @@ my $nonsense = temp-dir;
 %*ENV<SPOZ2_AGENT_CMD> = 'echo not a spec';
 ($rc, $out, $err) = spoz2($nonsense, 'init');
 is ($rc, $out), (0, "Created SPOZ2\n"), 'nonsense reply falls back to the scaffold';
-like $err, /"no 'SPOZ2 0.3' header"/, 'the validation failure is reported';
+like $err, /"no 'SPOZ2 0.4' header"/, 'the validation failure is reported';
 
 # --/agent never runs the agent
 my $manual = temp-dir;

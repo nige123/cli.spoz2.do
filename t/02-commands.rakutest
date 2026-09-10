@@ -63,7 +63,7 @@ is $mini.slurp, "SPOZ2 0.1\n\ngist:\n    Mini.\n\nbehaviours:\n    - Goes before
 # show
 is show-text($path, 'gist'), "Replaced gist.\n", 'show gist';
 my $inv-shown = show-text($path, 'invariants');
-ok $inv-shown.starts-with('- Invariant 0.0: humans come first'), 'shown invariants lead with invariant zero';
+ok $inv-shown.starts-with('- Invariant 0.0: humans first'), 'shown invariants lead with invariant zero';
 like $inv-shown, /'- Only one active session may exist per user.' \n '- Second invariant.'/, 'show list section';
 is show-text($path), $path.slurp, 'show whole document';
 
@@ -81,7 +81,7 @@ my $agent-dir = temp-dir;
 throws-like { agent-init-draft($agent-dir, :cmd('false')) }, X::AdHoc,
     message => /'agent command failed'/, 'failing agent command dies';
 throws-like { agent-init-draft($agent-dir, :cmd('echo just chatter')) }, X::AdHoc,
-    message => /"no 'SPOZ2 0.3' header"/, 'reply without a header dies';
+    message => /"no 'SPOZ2 0.4' header"/, 'reply without a header dies';
 
 my $placeholder = $agent-dir.add('placeholder.txt');
 $placeholder.spurt(template());

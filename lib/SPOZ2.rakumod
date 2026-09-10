@@ -98,7 +98,7 @@ sub agent-init-draft(IO::Path $dir = $*CWD, Str :$cmd = agent-cmd() --> Str) is 
         a user can do or observe) and 3 to 7 invariants (the rules someone
         would be upset to see silently broken), each a self-contained '- '
         entry indented four spaces, wrapped at 80 columns.  The scaffold's
-        invariants already begin with invariant 0.0 (humans come first):
+        invariants already begin with invariant 0.0 (humans first):
         keep that entry verbatim and first, and add the project's own
         invariants after it.  Add constraints
         only where the evidence states a real limit; leave decisions,

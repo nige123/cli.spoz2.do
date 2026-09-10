@@ -1,4 +1,4 @@
-SPOZ2 0.3
+SPOZ2 0.4
 
 # What is this project supposed to do?
 # Humans and AI tools should treat this file as the authoritative
@@ -32,7 +32,7 @@ behaviours:
       deliberately.
 
 invariants:
-    - Invariant 0.0: humans come first. This software exists to help humans
+    - Invariant 0.0: humans first. This software exists to help humans
       thrive and respect each person's dignity. It must not cause or assist
       harm to people; no claimed greater good makes a person disposable. It
       must preserve meaningful human oversight: people can understand its
@@ -74,6 +74,11 @@ constraints:
       so the format can evolve without breaking older files.
 
 decisions:
+    - 2026-09-10: Format 0.4, ruled by the user: the headline tightens
+      to 'humans first'.  0.3 (published minutes earlier, adopted by no
+      file) is superseded, not rewritten: its text and digest stay in
+      the record, which is the version rule surviving its first
+      temptation.
     - 2026-09-10: Format 0.3, ruled by the user: the designation becomes
       'Invariant 0.0' (retro-fitting the name; the clauses are unchanged
       from 0.2), reserving the 0.x space for the foundation.  The 0.2

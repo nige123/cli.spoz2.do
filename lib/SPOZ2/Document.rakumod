@@ -2,8 +2,8 @@ unit class SPOZ2::Document;
 
 #| The SPOZ2 format version this tool writes.  Older known versions are
 #| still read; each binds its own canonical invariant zero.
-constant FORMAT-VERSION is export = '0.3';
-constant @KNOWN-VERSIONS is export = ('0.1', '0.2', '0.3');
+constant FORMAT-VERSION is export = '0.4';
+constant @KNOWN-VERSIONS is export = ('0.1', '0.2', '0.3', '0.4');
 
 #| Placeholder gist written by `spoz2 init`.  `check` treats it as empty.
 constant GIST-PLACEHOLDER is export = '<What is this thing supposed to do?>';
@@ -45,30 +45,46 @@ constant INVARIANT-ZERO-V03 is export = 'Invariant 0.0: humans come first. '
     ~ 'what it is, what it knows, what it has done, and what remains '
     ~ 'uncertain. No other entry may weaken or override this invariant.';
 
+#| SPOZ2 0.4 (2026-09-10): the headline tightens to 'humans first'
+#| (user ruling); clauses otherwise unchanged.  0.3 was superseded the
+#| same day, before any file adopted it - recorded, not rewritten.
+constant INVARIANT-ZERO-V04 is export = 'Invariant 0.0: humans first. '
+    ~ 'This software exists to help humans thrive and respect each '
+    ~ "person's dignity. It must not cause or assist harm to people; no "
+    ~ 'claimed greater good makes a person disposable. It must preserve '
+    ~ 'meaningful human oversight: people can understand its consequential '
+    ~ 'actions, challenge its decisions, and exercise appropriate control, '
+    ~ 'including correction and safe stopping. It must honestly represent '
+    ~ 'what it is, what it knows, what it has done, and what remains '
+    ~ 'uncertain. No other entry may weaken or override this invariant.';
+
 #| The canonical text and its sha256 (of the exact one-line UTF-8 text,
 #| no trailing newline), per format version.
 constant %INVARIANT-ZERO-CANON is export = %(
     '0.1' => INVARIANT-ZERO-V01,
     '0.2' => INVARIANT-ZERO-V02,
     '0.3' => INVARIANT-ZERO-V03,
+    '0.4' => INVARIANT-ZERO-V04,
 );
 constant %INVARIANT-ZERO-DIGEST is export = %(
     '0.1' => '05c958a65fdbef4a02a23e9099b772fb8b4bef05a3d56e63c3f255f34cf89e75',
     '0.2' => '682f4ea25010ba8ec7aa8cc48fd7b10e2f1db4e7e9728ce82199cc784ac76598',
     '0.3' => 'a19ea6a24e3a833b1fde84e921a070fe483a05fad33e0270c1cb8e701833088b',
+    '0.4' => 'd072a03f407dc76d63c84c5fc278b2e23cf5527873d32d7e4323763874f56605',
 );
 
 #| What the current tool seeds (the current format version's text).
-constant INVARIANT-ZERO is export = INVARIANT-ZERO-V03;
+constant INVARIANT-ZERO is export = INVARIANT-ZERO-V04;
 
 #| The short teaching version, for pages and slides, never for files.
 constant INVARIANT-ZERO-SHORT is export =
     'Help humans thrive. Keep humans in charge. Never fake it.';
 
-#| The leads that identify invariant zero, however the rest is worded:
-#| the 0.3 designation and the frozen 0.1/0.2 spelling.
-constant INVARIANT-ZERO-LEAD is export = 'Invariant 0.0: humans come first';
-constant INVARIANT-ZERO-LEAD-LEGACY is export = 'Invariant zero: humans come first';
+#| The designations that identify invariant zero, however the rest is
+#| worded: 'Invariant 0.0:' (0.3+) and the frozen 'Invariant zero:'
+#| spelling (0.1/0.2).
+constant INVARIANT-ZERO-LEAD is export = 'Invariant 0.0:';
+constant INVARIANT-ZERO-LEAD-LEGACY is export = 'Invariant zero:';
 sub is-invariant-zero-text(Str $t --> Bool) is export {
     $t.starts-with(INVARIANT-ZERO-LEAD) || $t.starts-with(INVARIANT-ZERO-LEAD-LEGACY)
 }
