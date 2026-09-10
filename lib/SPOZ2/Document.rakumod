@@ -2,8 +2,8 @@ unit class SPOZ2::Document;
 
 #| The SPOZ2 format version this tool writes.  Older known versions are
 #| still read; each binds its own canonical invariant zero.
-constant FORMAT-VERSION is export = '0.2';
-constant @KNOWN-VERSIONS is export = ('0.1', '0.2');
+constant FORMAT-VERSION is export = '0.3';
+constant @KNOWN-VERSIONS is export = ('0.1', '0.2', '0.3');
 
 #| Placeholder gist written by `spoz2 init`.  `check` treats it as empty.
 constant GIST-PLACEHOLDER is export = '<What is this thing supposed to do?>';
@@ -32,26 +32,46 @@ constant INVARIANT-ZERO-V02 is export = 'Invariant zero: humans come first. '
     ~ 'what it is, what it knows, what it has done, and what remains '
     ~ 'uncertain. No other entry may weaken or override this invariant.';
 
+#| SPOZ2 0.3 (2026-09-10): the designation becomes 'Invariant 0.0',
+#| reserving the 0.x space for the foundation; the law's clauses are
+#| unchanged from 0.2.
+constant INVARIANT-ZERO-V03 is export = 'Invariant 0.0: humans come first. '
+    ~ 'This software exists to help humans thrive and respect each '
+    ~ "person's dignity. It must not cause or assist harm to people; no "
+    ~ 'claimed greater good makes a person disposable. It must preserve '
+    ~ 'meaningful human oversight: people can understand its consequential '
+    ~ 'actions, challenge its decisions, and exercise appropriate control, '
+    ~ 'including correction and safe stopping. It must honestly represent '
+    ~ 'what it is, what it knows, what it has done, and what remains '
+    ~ 'uncertain. No other entry may weaken or override this invariant.';
+
 #| The canonical text and its sha256 (of the exact one-line UTF-8 text,
 #| no trailing newline), per format version.
 constant %INVARIANT-ZERO-CANON is export = %(
     '0.1' => INVARIANT-ZERO-V01,
     '0.2' => INVARIANT-ZERO-V02,
+    '0.3' => INVARIANT-ZERO-V03,
 );
 constant %INVARIANT-ZERO-DIGEST is export = %(
     '0.1' => '05c958a65fdbef4a02a23e9099b772fb8b4bef05a3d56e63c3f255f34cf89e75',
     '0.2' => '682f4ea25010ba8ec7aa8cc48fd7b10e2f1db4e7e9728ce82199cc784ac76598',
+    '0.3' => 'a19ea6a24e3a833b1fde84e921a070fe483a05fad33e0270c1cb8e701833088b',
 );
 
 #| What the current tool seeds (the current format version's text).
-constant INVARIANT-ZERO is export = INVARIANT-ZERO-V02;
+constant INVARIANT-ZERO is export = INVARIANT-ZERO-V03;
 
 #| The short teaching version, for pages and slides, never for files.
 constant INVARIANT-ZERO-SHORT is export =
     'Help humans thrive. Keep humans in charge. Never fake it.';
 
-#| The lead that identifies invariant zero, however the rest is worded.
-constant INVARIANT-ZERO-LEAD is export = 'Invariant zero: humans come first';
+#| The leads that identify invariant zero, however the rest is worded:
+#| the 0.3 designation and the frozen 0.1/0.2 spelling.
+constant INVARIANT-ZERO-LEAD is export = 'Invariant 0.0: humans come first';
+constant INVARIANT-ZERO-LEAD-LEGACY is export = 'Invariant zero: humans come first';
+sub is-invariant-zero-text(Str $t --> Bool) is export {
+    $t.starts-with(INVARIANT-ZERO-LEAD) || $t.starts-with(INVARIANT-ZERO-LEAD-LEGACY)
+}
 
 #| Known top-level sections, in canonical order, with their kind.
 #| 'text' sections hold free text; 'list' sections hold "- " entries.
@@ -139,7 +159,7 @@ method invariant-zero-status(--> Str) {
     return 'invariant zero: binding not established (unknown format version)' without $v;
     my $digest = %INVARIANT-ZERO-DIGEST{$v}.substr(0, 12);
     my $inv    = self.section('invariants');
-    my $zero   = $inv ?? $inv.items.first(*.text.starts-with(INVARIANT-ZERO-LEAD)) !! Nil;
+    my $zero   = $inv ?? $inv.items.first({ is-invariant-zero-text(.text) }) !! Nil;
     with $zero {
         return squish-ws(.text) eq squish-ws(%INVARIANT-ZERO-CANON{$v})
             ?? "invariant zero: repeated locally, matches the canonical SPOZ2 $v text (sha256 $digest)"
@@ -273,9 +293,9 @@ method !validate() {
     my $canon = $v.defined ?? %INVARIANT-ZERO-CANON{$v} !! Str;
     my $inv   = self.section('invariants');
     my $first = $inv ?? $inv.items.head !! Nil;
-    my $zero  = $inv ?? $inv.items.first(*.text.starts-with(INVARIANT-ZERO-LEAD)) !! Nil;
+    my $zero  = $inv ?? $inv.items.first({ is-invariant-zero-text(.text) }) !! Nil;
     if $zero.defined {
-        unless $first.defined && $first.text.starts-with(INVARIANT-ZERO-LEAD) {
+        unless $first.defined && is-invariant-zero-text($first.text) {
             self!problem($zero.line,
                 "invariant zero ('humans come first') should be the first invariant", :warning);
         }

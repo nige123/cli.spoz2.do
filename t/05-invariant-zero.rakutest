@@ -7,7 +7,7 @@ use Test;
 use lib 'lib';
 use SPOZ2::Document;
 
-plan 15;
+plan 19;
 
 my $g = "gist:\n    hi\n";
 
@@ -40,10 +40,19 @@ my $crossed = SPOZ2::Document.parse("SPOZ2 0.1\n\n$g\ninvariants:\n    - " ~ INV
 ok $crossed.warnings.grep(*.Str.contains('canonical SPOZ2 0.1')),
     '0.2 text under a 0.1 header is flagged against the 0.1 canonical';
 isnt INVARIANT-ZERO-V01, INVARIANT-ZERO-V02, 'the two versions have distinct frozen texts';
-is INVARIANT-ZERO, INVARIANT-ZERO-V02, 'the current tool seeds the 0.2 text';
+is INVARIANT-ZERO, INVARIANT-ZERO-V03, 'the current tool seeds the 0.3 text';
+
+# --- 0.3: the designation is Invariant 0.0; legacy lead still recognised -
+my $v3 = SPOZ2::Document.parse("SPOZ2 0.3\n\n$g\ninvariants:\n    - " ~ INVARIANT-ZERO-V03 ~ "\n");
+nok $v3.warnings, '0.3 canonical text (Invariant 0.0 lead) is clean';
+like $v3.invariant-zero-status, /'matches the canonical SPOZ2 0.3 text'/,
+    '0.3 status reports the verified match';
+my $legacy-lead = SPOZ2::Document.parse("SPOZ2 0.3\n\n$g\ninvariants:\n    - " ~ INVARIANT-ZERO-V02 ~ "\n");
+ok $legacy-lead.warnings.grep(*.Str.contains('differs from the canonical SPOZ2 0.3')),
+    'the legacy Invariant zero lead is still recognised, and flagged as pre-0.3 wording';
 
 # --- published digests match the canonical bytes ------------------------
-for '0.1', '0.2' -> $v {
+for '0.1', '0.2', '0.3' -> $v {
     my $proc = run 'sha256sum', :in, :out;
     $proc.in.print(%INVARIANT-ZERO-CANON{$v});
     $proc.in.close;

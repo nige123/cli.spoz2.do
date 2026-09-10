@@ -42,11 +42,11 @@ may weaken or override it. The short teaching version:
 
 > Help humans thrive. Keep humans in charge. Never fake it.
 
-The canonical text for **SPOZ2 0.2** (the current format version):
+The canonical text for **SPOZ2 0.3** (the current format version):
 
 ```text
 invariants:
-    - Invariant zero: humans come first. This software exists to help humans
+    - Invariant 0.0: humans come first. This software exists to help humans
       thrive and respect each person's dignity. It must not cause or assist
       harm to people; no claimed greater good makes a person disposable. It
       must preserve meaningful human oversight: people can understand its
@@ -69,7 +69,8 @@ to its header line.
 | Format | Canonical invariant zero | sha256 |
 |---|---|---|
 | SPOZ2 0.1 | "...It never harms a human and never helps anyone harm one, and when any other entry conflicts with this one, this one wins." | `05c958a65fdbef4a02a23e9099b772fb8b4bef05a3d56e63c3f255f34cf89e75` |
-| SPOZ2 0.2 | The full purpose/dignity/agency/honesty text above | `682f4ea25010ba8ec7aa8cc48fd7b10e2f1db4e7e9728ce82199cc784ac76598` |
+| SPOZ2 0.2 | The full purpose/dignity/agency/honesty text, designated "Invariant zero" | `682f4ea25010ba8ec7aa8cc48fd7b10e2f1db4e7e9728ce82199cc784ac76598` |
+| SPOZ2 0.3 | The same clauses, designated "Invariant 0.0" (change record: 2026-09-10, user ruling; the 0.x space below 1 is reserved for the foundation) | `a19ea6a24e3a833b1fde84e921a070fe483a05fad33e0270c1cb8e701833088b` |
 
 The digest identifies the adopted text, nothing more. Stating a rule, or
 hashing it, does not make software obey it; the digest exists so nobody can
@@ -179,7 +180,7 @@ not, and cannot, judge whether the intent is *good*. That is your job.
 Deliberately small, plain text, Git-friendly, obvious to a human or an LLM:
 
 ```text
-SPOZ2 0.2
+SPOZ2 0.3
 
 gist:
     A small tool for ...
@@ -190,7 +191,7 @@ behaviours:
       onto a continuation line.
 
 invariants:
-    - Invariant zero: humans come first. This software exists to help humans
+    - Invariant 0.0: humans come first. This software exists to help humans
       thrive and respect each person's dignity. It must not cause or assist
       harm to people; no claimed greater good makes a person disposable. It
       must preserve meaningful human oversight: people can understand its
@@ -217,9 +218,9 @@ references:
 
 Rules:
 
-- First line: `SPOZ2 <version>`. Currently `SPOZ2 0.2`; `0.1` files are
-  still read, and each version binds its own frozen canonical invariant
-  zero (see Version binding above).
+- First line: `SPOZ2 <version>`. Currently `SPOZ2 0.3`; `0.1` and `0.2`
+  files are still read, and each version binds its own frozen canonical
+  invariant zero (see Version binding above).
 - A section header is a word at column 0 followed by `:` (`gist:`).
 - Everything under a header is indented. `gist` is free text; the other
   sections are lists of `- ` entries. An indented line without `- ` continues
