@@ -5,7 +5,7 @@ use SPOZ2;
 use SPOZ2::Document;
 use SPOZ2::Agent;
 
-plan 51;
+plan 55;
 
 my $dir = temp-dir;
 my $sp  = init(:$dir);
@@ -122,8 +122,20 @@ like $err, /'invalid SPOZ2'/, 'refusal names the reason';
 my $flagged = temp-dir;
 ($rc, $out, $err) = spoz2($flagged, 'init', '--/agent', '--agents');
 like $out, /'AGENTS.md: installed'/, 'init --agents installs the entry point';
-ok $flagged.add('AGENTS.md').f, 'entry point file written by init --agents';
+ok $flagged.add('CLAUDE.md').f && $flagged.add(SKILL-PATH).f, '--agents forces every integration';
 
 my $plain = temp-dir;
 ($rc, $out, $err) = spoz2($plain, 'init', '--/agent');
-nok $plain.add('AGENTS.md').e, 'scripted init never writes AGENTS.md unasked';
+ok $plain.add('AGENTS.md').f, 'init installs AGENTS.md by default - no flags to remember';
+nok $plain.add('CLAUDE.md').e, 'CLAUDE.md is not created where Claude is not in use';
+
+my $claudey = temp-dir;
+$claudey.add('.claude').mkdir;
+($rc, $out, $err) = spoz2($claudey, 'init', '--/agent');
+ok $claudey.add('CLAUDE.md').f && $claudey.add(SKILL-PATH).f,
+    'a repo showing Claude use gets CLAUDE.md and the skill automatically';
+
+my $optout = temp-dir;
+($rc, $out, $err) = spoz2($optout, 'init', '--/agent', '--/agents');
+is $out, "Created SPOZ2\n", '--/agents opts out of entry points';
+nok $optout.add('AGENTS.md').e, 'nothing installed on opt-out';

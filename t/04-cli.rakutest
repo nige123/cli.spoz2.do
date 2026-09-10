@@ -14,7 +14,7 @@ is $rc, 1, 'check without SPOZ2 exits 1';
 is $err, "No SPOZ2 found in this directory or its parents.\nRun 'spoz2 init' to create one.\n", 'actionable message';
 
 ($rc, $out, $err) = spoz2($dir, 'init', '--/agent');
-is ($rc, $out), (0, "Created SPOZ2\n"), 'init output';
+is ($rc, $out), (0, "Created SPOZ2\nAGENTS.md: installed\n"), 'init output';
 ($rc, $out, $err) = spoz2($dir, 'init', '--/agent');
 is $rc, 1, 'second init fails';
 like $err, /'already exists'/, 'second init explains';
@@ -63,7 +63,7 @@ $reply.spurt(qq:to/END/);
     END
 %*ENV<SPOZ2_AGENT_CMD> = "cat {$reply}";
 ($rc, $out, $err) = spoz2($drafted, 'init');
-is ($rc, $out), (0, "Created SPOZ2 (3 invariants, agent-drafted)\n"),
+is ($rc, $out), (0, "Created SPOZ2 (3 invariants, agent-drafted)\nAGENTS.md: installed\n"),
     'agent init reports the draft (its invariants plus invariant zero)';
 like $err, /'review it'/, 'agent init asks for review';
 ($rc, $out, $err) = spoz2($drafted, 'check');
@@ -74,7 +74,7 @@ ok $rc == 0 && $out.contains('invariant zero:') && $out.ends-with("OK SPOZ2\n"),
 my $fallback = temp-dir;
 %*ENV<SPOZ2_AGENT_CMD> = 'false';
 ($rc, $out, $err) = spoz2($fallback, 'init');
-is ($rc, $out), (0, "Created SPOZ2\n"), 'fallback still creates the scaffold';
+is ($rc, $out), (0, "Created SPOZ2\nAGENTS.md: installed\n"), 'fallback still creates the scaffold';
 like $err, /'attempt 1 failed' .* 'attempt 2 failed' .* 'falling back to the plain scaffold'/,
     'fallback is loud after two attempts';
 like $fallback.add('SPOZ2').slurp, /'<What is this thing supposed to do?>'/, 'fallback wrote the scaffold';
@@ -83,12 +83,12 @@ like $fallback.add('SPOZ2').slurp, /'<What is this thing supposed to do?>'/, 'fa
 my $nonsense = temp-dir;
 %*ENV<SPOZ2_AGENT_CMD> = 'echo not a spec';
 ($rc, $out, $err) = spoz2($nonsense, 'init');
-is ($rc, $out), (0, "Created SPOZ2\n"), 'nonsense reply falls back to the scaffold';
+is ($rc, $out), (0, "Created SPOZ2\nAGENTS.md: installed\n"), 'nonsense reply falls back to the scaffold';
 like $err, /"no 'SPOZ2 0.0' header"/, 'the validation failure is reported';
 
 # --/agent never runs the agent
 my $manual = temp-dir;
 %*ENV<SPOZ2_AGENT_CMD> = 'echo SHOULD-NOT-RUN';
 ($rc, $out, $err) = spoz2($manual, 'init', '--/agent');
-is ($rc, $out), (0, "Created SPOZ2\n"), '--/agent writes the scaffold';
+is ($rc, $out), (0, "Created SPOZ2\nAGENTS.md: installed\n"), '--/agent writes the scaffold';
 unlike $err, /'asking agent'/, '--/agent does not consult the agent';

@@ -121,7 +121,14 @@ $ spoz2 init
 asking agent (claude -p) to distill /home/you/signin-codes ...
 Created SPOZ2 (4 invariants, agent-drafted)
 review it - the draft states intent, and only the maintainer knows intent.
+AGENTS.md: installed
 ```
+
+One command does everything: it drafts the SPOZ2 and installs the agent
+entry points it detects - `AGENTS.md` always, plus `CLAUDE.md` and the
+portable skill when the repository shows Claude use. No options to look
+up, and it never prompts (`--/agents` opts out; `--agents` forces all
+three).
 
 By default `init` drafts the first real specification for you: it hands the
 scaffold plus the codebase's own account of itself (README, changelog, file
@@ -243,7 +250,9 @@ the primary tool.
 
 ## Agents: make the SPOZ2 easy to follow
 
-The shortest adoption path, from the repository root:
+The shortest adoption path is just `spoz2 init` - it installs the agent
+entry points it detects automatically. In a repository that already has
+its SPOZ2:
 
 ```text
 $ spoz2 agent install --claude --skill

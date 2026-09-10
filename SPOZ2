@@ -29,7 +29,10 @@ behaviours:
       that evidence to a configurable agent command and validates the draft
       before writing it. Without a working agent, init falls back to the plain
       scaffold, loudly, so it always leaves a file. --/agent skips the agent
-      deliberately.
+      deliberately. init also sets up agent entry points by default - AGENTS.md
+      always, CLAUDE.md and the skill when the repository shows Claude use -
+      with --/agents to opt out and --agents to force all three; trouble there
+      is a warning, never a failed init, and init never prompts.
     - A maintainer can make a SPOZ2 discoverable by connecting it to the SPOZ2
       register and submitting evidence (spoz2 register, spoz2 report). Signing
       up comes first, on the web (register.spoz2.do, email passcode); the CLI
@@ -100,6 +103,13 @@ constraints:
       so the format can evolve without breaking older files.
 
 decisions:
+    - 2026-09-10: init does a lot automatically by default (user ruling:
+      don't make me think - no command-line options to look up). One command
+      drafts the spec and installs the agent entry points it detects, safe
+      because managed sections preserve surrounding content and are
+      idempotent; --/agents opts out, --agents forces everything, and
+      nothing ever prompts. This supersedes the same-day choice to prompt
+      interactively and require an explicit flag in scripts.
     - 2026-09-10: Practical agent adherence lives in the CLI and stays
       harness-agnostic (agent-adherence brief, plus the user's ruling to
       ship an official portable skill). One canonical protocol is bundled

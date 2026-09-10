@@ -12,11 +12,15 @@ my %*SUB-MAIN-OPTS = :named-anywhere;
 sub USAGE() {
     print q:to/END/;
     Usage:
-      spoz2 init [--/agent]              create a SPOZ2 here: an agent command
+      spoz2 init                         set up everything: an agent command
                                            (SPOZ2_AGENT_CMD, default 'claude -p')
-                                           drafts it from the codebase's own
-                                           account of itself; --/agent, or no
-                                           working agent, writes the scaffold
+                                           drafts the SPOZ2 from the codebase's
+                                           own account of itself, and the agent
+                                           entry points it detects are installed
+                                           automatically
+                                           (--/agent: write the plain scaffold;
+                                            --/agents: skip the entry points;
+                                            --agents: install all of them)
       spoz2 show [FILE] [SECTION]        print the SPOZ2, or one section
       spoz2 check [FILE]                 validate structure (exit 1 on errors)
       spoz2 add KIND TEXT [--file=FILE]  add an entry; KIND is one of
@@ -62,7 +66,7 @@ sub attempt(&body) {
     }
 }
 
-multi MAIN('init', Bool :$agent = True, Bool :$agents = False) {
+multi MAIN('init', Bool :$agent = True, Bool :$agents) {
     attempt {
         user-error("SPOZ2 already exists here; not overwriting") if $*CWD.add('SPOZ2').e;
         my $text;
@@ -86,13 +90,16 @@ multi MAIN('init', Bool :$agent = True, Bool :$agents = False) {
             my $path = init();
             say "Created {$path.basename}";
         }
-        if $agents {
-            say "AGENTS.md: {install-agent-section($*CWD.add('AGENTS.md'), :root($*CWD))}";
-        }
-        elsif $*IN.t && $*OUT.t {
-            my $answer = prompt("Add an agent entry point in AGENTS.md (points coding agents at 'spoz2 agent')? [y/N] ") // '';
-            say "AGENTS.md: {install-agent-section($*CWD.add('AGENTS.md'), :root($*CWD))}"
-                if $answer.trim.lc.starts-with('y');
+        # Agent entry points install themselves - don't make the user think.
+        # Default: AGENTS.md always, CLAUDE.md and the skill when the repo
+        # shows Claude use. --agents forces all three; --/agents skips.
+        if $agents !=== False {
+            CATCH { when X::SPOZ2 { note "agent entry points not installed: {.message}" } }
+            my $root      = $*CWD;
+            my $claudeish = $root.add('CLAUDE.md').e || $root.add('.claude').d;
+            my @sections  = 'AGENTS.md', |(($agents === True || $claudeish) ?? 'CLAUDE.md' !! Empty);
+            say "$_: {install-agent-section($root.add($_), :$root)}" for @sections;
+            say "{SKILL-PATH}: {install-skill(:$root)}" if $agents === True || $root.add('.claude').d;
         }
         0;
     }
