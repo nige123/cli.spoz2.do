@@ -27,7 +27,7 @@ my $valid = q:to/END/;
 
 my $doc = SPOZ2::Document.parse($valid);
 ok $doc.ok, 'valid document has no errors';
-is $doc.version, '0.1', 'version parsed';
+is $doc.version, '0.0', 'version parsed';
 is $doc.sections».name, <gist behaviours invariants constraints references>, 'sections in order';
 is $doc.section('gist').text, "A small tool for testing.\nSecond line of gist.", 'gist text';
 is $doc.section('behaviours').items».text, ('Does X.', 'Does Y, continued.'), 'items with continuation';
