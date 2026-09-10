@@ -36,6 +36,18 @@ behaviours:
       guides those steps, stores the connection, and submits evidence itself.
       A report carries presence, digest, counts and check outcomes - never the
       text of the SPOZ2.
+    - A coding agent can fetch everything it needs to follow a SPOZ2 in one
+      offline command (spoz2 agent): the canonical adherence protocol, the
+      file's format version and byte digest, the inherited Invariant Zero,
+      and the specification itself, as delimited text or versioned --json.
+      spoz2 agent install writes short managed sections into AGENTS.md (and
+      CLAUDE.md with --claude) and, with --skill, the portable skill - all
+      generated from the one bundled protocol, never copying the project's
+      invariants, preserving surrounding content, idempotent, and refusing
+      malformed markers or symlinks that escape the repository. spoz2 agent
+      status reports spec validity, binding resolution and integration
+      state in wording that never claims an agent read anything or that
+      software conforms; --strict turns it into a CI check.
     - The CLI installs with one curl command: the installer fetches the code,
       fetches the runtime too when it is missing (into the user's home,
       nothing system-wide), links spoz2 onto the PATH and verifies it runs.
@@ -88,6 +100,19 @@ constraints:
       so the format can evolve without breaking older files.
 
 decisions:
+    - 2026-09-10: Practical agent adherence lives in the CLI and stays
+      harness-agnostic (agent-adherence brief, plus the user's ruling to
+      ship an official portable skill). One canonical protocol is bundled
+      in the tool; spoz2 agent prints it in a self-contained packet, and
+      every integration is generated from it: thin managed sections that
+      point at the command, and the skill, which embeds the protocol so
+      the core workflow works by reading the file directly - while stating
+      that CLI validation and inherited-binding resolution were skipped.
+      Wording is kept honest everywhere: a packet proves nothing was read,
+      installed integrations are statements about files, spoz2 check stays
+      structural, and evidence of conformance remains the agent's reported
+      checks, not a tool claim. Additive only; no invariant weakened, and
+      no dependency on any particular harness, model, editor or registry.
     - 2026-09-10: Installation is one curl command (user ruling: much easier,
       and people may not even need to know it uses Raku). The repo ships a
       POSIX-sh installer served raw from GitHub; when no runtime is present

@@ -13,6 +13,14 @@ sub user-error(Str $message) { X::SPOZ2.new(:$message).throw }
 
 constant ROOT-NAME is export = 'SPOZ2';
 
+#| sha256 of a file's exact bytes, via the sha256sum tool (external, like Git).
+sub sha256-file(IO::Path $f --> Str) is export {
+    my $p = try run 'sha256sum', $f.Str, :out, :err;
+    user-error('sha256sum is required to fingerprint the SPOZ2 and was not found')
+        unless $p.defined && $p.exitcode == 0;
+    $p.out.slurp(:close).words.head.Str;
+}
+
 # ---------------------------------------------------------------- discovery
 
 #| Walk upward from $start looking for a root SPOZ2 file.

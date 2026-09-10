@@ -5,6 +5,7 @@ use lib $*PROGRAM.resolve.parent(2).add('lib').Str;   # run from a checkout with
 use SPOZ2;
 use SPOZ2::Document;
 use SPOZ2::Register;
+use SPOZ2::Agent;
 
 my %*SUB-MAIN-OPTS = :named-anywhere;
 
@@ -32,6 +33,20 @@ sub USAGE() {
                                            counts, check outcome - never the
                                            text); advisory: exit 0 unless --strict
       spoz2 version                      print the tool and format versions
+      spoz2 agent [--json]               print the agent packet: adherence
+                                           protocol, format version and digest,
+                                           inherited Invariant Zero, and the
+                                           specification itself
+      spoz2 agent install [--claude] [--skill]
+                                         add a managed section to AGENTS.md
+                                           (--claude: CLAUDE.md too; --skill:
+                                           the portable skill) pointing agents
+                                           at 'spoz2 agent'
+      spoz2 agent status [--json] [--strict]
+                                         report spec validity, binding and
+                                           integration state; informational
+                                           exit 0, or exit 1 with --strict on
+                                           invalid/unresolved/stale
 
     FILE is an explicit .spoz2 document; otherwise the nearest SPOZ2 in this
     directory or its parents is used.
@@ -47,7 +62,7 @@ sub attempt(&body) {
     }
 }
 
-multi MAIN('init', Bool :$agent = True) {
+multi MAIN('init', Bool :$agent = True, Bool :$agents = False) {
     attempt {
         user-error("SPOZ2 already exists here; not overwriting") if $*CWD.add('SPOZ2').e;
         my $text;
@@ -70,6 +85,14 @@ multi MAIN('init', Bool :$agent = True) {
         else {
             my $path = init();
             say "Created {$path.basename}";
+        }
+        if $agents {
+            say "AGENTS.md: {install-agent-section($*CWD.add('AGENTS.md'), :root($*CWD))}";
+        }
+        elsif $*IN.t && $*OUT.t {
+            my $answer = prompt("Add an agent entry point in AGENTS.md (points coding agents at 'spoz2 agent')? [y/N] ") // '';
+            say "AGENTS.md: {install-agent-section($*CWD.add('AGENTS.md'), :root($*CWD))}"
+                if $answer.trim.lc.starts-with('y');
         }
         0;
     }
@@ -127,6 +150,49 @@ multi MAIN('diff', *@args) {
 
 multi MAIN('version') {
     say "spoz2 {VERSION} (SPOZ2 format {FORMAT-VERSION})";
+}
+
+multi MAIN('agent', Bool :$json = False, Str :$file) {
+    attempt {
+        my %p = agent-packet(resolve-target($file));
+        print $json ?? json-encode(%p) ~ "\n" !! packet-text(%p);
+        0;
+    }
+}
+
+multi MAIN('agent', 'install', Bool :$claude = False, Bool :$skill = False, Str :$file) {
+    attempt {
+        my $root = resolve-target($file).parent;
+        for 'AGENTS.md', |($claude ?? 'CLAUDE.md' !! Empty) -> $name {
+            say "$name: {install-agent-section($root.add($name), :$root)}";
+        }
+        say "{SKILL-PATH}: {install-skill(:$root)}" if $skill;
+        say "These integrations only encourage adherence in tools that load them.";
+        0;
+    }
+}
+
+multi MAIN('agent', 'status', Bool :$json = False, Bool :$strict = False, Str :$file) {
+    attempt {
+        my $path = try resolve-target($file);
+        my $root = $path.defined ?? $path.parent !! $*CWD;
+        my %s    = agent-status($path, :$root);
+        if $json { say json-encode(%s) }
+        else {
+            if %s<spoz2><present> {
+                say "SPOZ2: {display-name($path)} - " ~ (%s<spoz2><valid>
+                    ?? "valid (SPOZ2 {%s<spoz2><format_version>})"
+                    !! "INVALID ({%s<spoz2><errors>} errors - run 'spoz2 check')");
+                say %s<spoz2><binding>;
+            }
+            else { say 'SPOZ2: none found in this directory or its parents' }
+            say integration-line($_, %s<integrations>{$_}) for 'AGENTS.md', 'CLAUDE.md', SKILL-PATH;
+            say %s<note>;
+        }
+        my $fail = !%s<spoz2><present> || !%s<spoz2><valid> || !%s<spoz2><binding_resolves>
+                || ?%s<integrations>.values.grep(* eq 'stale' | 'malformed');
+        ($strict && $fail) ?? 1 !! 0;
+    }
 }
 
 multi MAIN('register', Str :$url, Str :$token, Str :$file) {

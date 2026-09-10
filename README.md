@@ -241,6 +241,60 @@ Rules:
 columns) - it never rewrites your formatting or comments. Your editor remains
 the primary tool.
 
+## Agents: make the SPOZ2 easy to follow
+
+The shortest adoption path, from the repository root:
+
+```text
+$ spoz2 agent install --claude --skill
+AGENTS.md: installed
+CLAUDE.md: installed
+.claude/skills/spoz2/SKILL.md: installed
+```
+
+`spoz2 agent` prints a self-contained packet for any coding agent: the
+canonical adherence protocol, the resolved SPOZ2 path, its format version
+and a sha256 of the exact file bytes, the inherited Invariant Zero, and
+the specification itself, clearly delimited as project content. `--json`
+emits the same as a versioned schema (`spoz2-agent-packet/1`) with
+metadata, protocol and specification in separate fields. The command is
+read-only, deterministic and fully offline; it fails clearly on a missing
+or invalid specification or an unresolved binding rather than inventing a
+valid packet.
+
+`spoz2 agent install` writes a short managed section (between
+`SPOZ2-AGENT` markers) into `AGENTS.md` - and `CLAUDE.md` with `--claude`
+- telling agents to run `spoz2 agent` before planning or changing
+anything. `--skill` also generates the official portable skill at
+`.claude/skills/spoz2/SKILL.md`, which embeds the full protocol so the
+core workflow works even where the CLI is unavailable: read the root
+`SPOZ2` directly, apply the protocol, and say that CLI validation and
+inherited Invariant Zero resolution were not performed. All integrations
+are generated from the one bundled protocol; project invariants stay in
+the SPOZ2 file, never in instruction files. Everything outside the marked
+sections is preserved, repeat installs are idempotent, and malformed
+markers or symlinks escaping the repository make the install fail without
+touching anything. `spoz2 init` offers the same install when run
+interactively; in scripts, pass `--agents` explicitly (it never prompts).
+
+`spoz2 agent status` reports what is actually on disk: whether the SPOZ2
+is present and valid, whether its inherited binding resolves, and which
+integrations are current, stale, malformed or absent - with
+machine-readable `--json`. Exit codes: plain status is informational and
+exits 0; `--strict` is the CI check and exits 1 on an invalid or missing
+specification, an unresolved binding, or a stale or malformed managed
+section (absent integrations are not failures).
+
+Honesty, kept deliberately: a printed packet proves neither that an agent
+read it nor that software conforms; "integration installed" is a
+statement about files, not about agent behaviour; `spoz2 check` remains
+structural validation, never a semantic proof. Evidence that software
+satisfies an invariant comes from the checks an agent actually runs and
+reports - the protocol requires agents to distinguish checks run from
+checks suggested, and to report per-invariant assessment, evidence and
+remaining gaps. CI validation (`spoz2 check`, `spoz2 agent status
+--strict`) complements agent instructions; it does not replace review.
+
 ## Registering (optional): make your SPOZ2 discoverable
 
 The [SPOZ2 register](https://register.spoz2.do) gives a project a public

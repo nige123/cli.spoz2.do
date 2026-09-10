@@ -92,13 +92,6 @@ sub collect-report(IO::Path $spoz2, Str :$release, Str :$run-id --> Hash) is exp
     %report;
 }
 
-sub sha256-file(IO::Path $f --> Str) {
-    my $p = try run 'sha256sum', $f.Str, :out, :err;
-    register-error('sha256sum is required to fingerprint the SPOZ2 and was not found')
-        unless $p.defined && $p.exitcode == 0;
-    $p.out.slurp(:close).words.head.Str;
-}
-
 # ---------------------------------------------------------------- JSON
 
 #| Canonical JSON (sorted keys), enough for the report payload.

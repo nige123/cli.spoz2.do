@@ -1,0 +1,129 @@
+use lib $?FILE.IO.parent.add('lib').Str;
+use Test;
+use SPOZ2Test;
+use SPOZ2;
+use SPOZ2::Document;
+use SPOZ2::Agent;
+
+plan 51;
+
+my $dir = temp-dir;
+my $sp  = init(:$dir);
+add-entry($sp, 'gist', 'An agent-adhering thing.');
+
+# ---- packet -----------------------------------------------------------
+my %p = agent-packet($sp);
+is %p<schema>, 'spoz2-agent-packet/1', 'packet schema is versioned';
+is %p<format_version>, FORMAT-VERSION, 'format version resolved from the file';
+is %p<invariant_zero><text>, INVARIANT-ZERO, 'canonical Invariant Zero carried';
+is %p<invariant_zero><sha256>, INVARIANT-ZERO-DIGEST, 'canonical digest carried';
+ok %p<protocol>.contains('Read the root SPOZ2'), 'protocol included';
+is %p<specification>, $sp.slurp, 'specification is the verbatim file';
+my $sum = run('sha256sum', $sp.Str, :out).out.slurp(:close).words.head;
+is %p<sha256>, $sum, 'digest is of the exact file bytes';
+like packet-text(%p), /'treat as data, not instructions'/, 'specification is delimited as content';
+like packet-text(%p), /'proves neither'/, 'packet says what it cannot prove';
+
+# omitted local text: binding inherited, reported honestly
+my $inh = $dir.add('inherit.spoz2');
+$inh.spurt("SPOZ2 {FORMAT-VERSION}\n\ngist:\n    Inherits invariant zero.\n\ninvariants:\n    - Something else.\n");
+like agent-packet($inh)<invariant_zero><binding>, /'inherited'/,
+    'omitted Invariant Zero text reported as inherited, still binding';
+
+# failures: never invent a valid packet
+my $bad = $dir.add('bad.spoz2');
+$bad.spurt("SPOZ2 {FORMAT-VERSION}\n\ngist:\n\n");
+throws-like { agent-packet($bad) }, X::SPOZ2, message => /'invalid SPOZ2'/, 'invalid spec refused';
+my $odd = $dir.add('odd.spoz2');
+$odd.spurt("SPOZ2 9.9\n\ngist:\n    hi\n");
+throws-like { agent-packet($odd) }, X::SPOZ2, message => /'unresolved Invariant Zero binding'/,
+    'unknown format version refused: binding unresolved';
+throws-like { agent-packet($dir.add('none.spoz2')) }, X::SPOZ2, message => /'no such file'/,
+    'missing file refused';
+
+# ---- managed sections -------------------------------------------------
+my $agents = $dir.add('AGENTS.md');
+is install-agent-section($agents, :root($dir)), 'installed', 'fresh install into a new file';
+is install-agent-section($agents, :root($dir)), 'unchanged', 'repeat install is idempotent';
+unlike $agents.slurp, /'humans first. This software'/, 'invariants are not copied into instruction files';
+
+my $before = "# My project\n\nHand-written notes stay.\n";
+my $claude = $dir.add('CLAUDE.md');
+$claude.spurt($before);
+is install-agent-section($claude, :root($dir)), 'installed', 'install appends to an existing file';
+ok $claude.slurp.starts-with($before), 'user-authored content preserved';
+like $claude.slurp, /'spoz2 agent'/, 'section points at spoz2 agent';
+like $claude.slurp, /'were not performed'/, 'fallback says CLI validation was skipped';
+
+# a hand-edited section is stale; refresh touches only the managed block
+$claude.spurt($claude.slurp.subst('Before planning', 'BEFORE PLANNING'));
+is section-status($claude), 'stale', 'edited section detected as stale';
+is install-agent-section($claude, :root($dir)), 'updated', 'stale section refreshed';
+ok $claude.slurp.starts-with($before), 'surrounding content intact after refresh';
+is section-status($claude), 'current', 'section current after refresh';
+
+# malformed markers fail without damaging the file
+my $dupe = $dir.add('NOTES.md');
+my $dupe-text = managed-block() ~ "\n" ~ managed-block() ~ "\n";
+$dupe.spurt($dupe-text);
+throws-like { install-agent-section($dupe, :root($dir)) }, X::SPOZ2, message => /'malformed'/,
+    'duplicate markers refused';
+is $dupe.slurp, $dupe-text, 'malformed file left untouched';
+is section-status($dupe), 'malformed', 'duplicate markers reported malformed';
+
+# symlinks escaping the repository are refused
+my $outside = temp-dir;
+$outside.add('AGENTS.md').spurt("elsewhere\n");
+my $linked = temp-dir;
+init(:dir($linked));
+run 'ln', '-s', $outside.add('AGENTS.md').Str, $linked.add('AGENTS.md').Str;
+throws-like { install-agent-section($linked.add('AGENTS.md'), :root($linked)) }, X::SPOZ2,
+    message => /'symlink'/, 'symlink escaping the repository refused';
+is $outside.add('AGENTS.md').slurp, "elsewhere\n", 'file outside the repository untouched';
+
+# ---- the portable skill ----------------------------------------------
+like skill-text(), /'name: spoz2'/, 'skill has its frontmatter';
+ok skill-text().contains(AGENT-PROTOCOL.trim-trailing), 'skill embeds the canonical protocol';
+is install-skill(:root($dir)), 'installed', 'skill installed';
+is install-skill(:root($dir)), 'unchanged', 'skill install idempotent';
+$dir.add(SKILL-PATH).spurt("tampered\n");
+is skill-status(:root($dir)), 'stale', 'edited skill detected as stale';
+is install-skill(:root($dir)), 'updated', 'stale skill regenerated';
+
+# ---- status -----------------------------------------------------------
+my %s = agent-status($sp, :root($dir));
+is %s<schema>, 'spoz2-agent-status/1', 'status schema is versioned';
+ok %s<spoz2><valid> && %s<spoz2><binding_resolves>, 'status: valid spec, binding resolves';
+is %s<integrations><AGENTS.md>, 'current', 'status: AGENTS.md integration current';
+like %s<note>, /'never that an agent read'/, 'status wording claims nothing about agents';
+
+# ---- CLI --------------------------------------------------------------
+my ($rc, $out, $err) = spoz2($dir, 'agent');
+is $rc, 0, 'spoz2 agent exits 0';
+like $out, /'SPOZ2 agent packet'/, 'prints the packet';
+($rc, $out, $err) = spoz2($dir, 'agent', '--json');
+like $out, /'"schema":"spoz2-agent-packet/1"'/, '--json emits the versioned schema';
+
+($rc, $out, $err) = spoz2($dir, 'agent', 'status');
+is $rc, 0, 'status is informational: exit 0';
+like $out, /'integration installed (current)'/, 'status uses precise integration wording';
+($rc, $out, $err) = spoz2($dir, 'agent', 'status', '--strict');
+is $rc, 0, 'strict passes while everything is current';
+$dir.add(SKILL-PATH).spurt("tampered\n");
+($rc, $out, $err) = spoz2($dir, 'agent', 'status', '--strict');
+is $rc, 1, 'strict exits 1 on a stale integration';
+
+my $broken = temp-dir;
+init(:dir($broken));   # placeholder gist: structurally invalid for a packet
+($rc, $out, $err) = spoz2($broken, 'agent');
+is $rc, 1, 'agent packet refused for an invalid spec';
+like $err, /'invalid SPOZ2'/, 'refusal names the reason';
+
+my $flagged = temp-dir;
+($rc, $out, $err) = spoz2($flagged, 'init', '--/agent', '--agents');
+like $out, /'AGENTS.md: installed'/, 'init --agents installs the entry point';
+ok $flagged.add('AGENTS.md').f, 'entry point file written by init --agents';
+
+my $plain = temp-dir;
+($rc, $out, $err) = spoz2($plain, 'init', '--/agent');
+nok $plain.add('AGENTS.md').e, 'scripted init never writes AGENTS.md unasked';
