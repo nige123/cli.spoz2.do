@@ -1,0 +1,43 @@
+use lib $?FILE.IO.parent.add('lib').Str;
+use Test;
+use SPOZ2Test;
+
+plan 8;
+
+my $repo-root = $?FILE.IO.parent.parent.resolve;
+
+# spoz2 version (what the installer uses to verify itself)
+my ($rc, $out, $err) = spoz2(temp-dir, 'version');
+is $rc, 0, 'version exits 0';
+like $out, /^ 'spoz2 ' \d+ '.' \d+ '.' \d+ /, 'prints the tool version';
+like $out, /'SPOZ2 format ' \d+ '.' \d+/, 'names the format version';
+
+# the installer, run against this checkout, into an isolated prefix;
+# raku is already present here, so no runtime is ever fetched
+if have-git() {
+    my $fake = temp-dir;
+    my %env = %*ENV;
+    %env<SPOZ2_REPO>       = $repo-root.Str;
+    %env<SPOZ2_HOME>       = $fake.add('share').Str;
+    %env<SPOZ2_BIN>        = $fake.add('bin').Str;
+    %env<SPOZ2_NO_RUNTIME> = '1';
+
+    my $p1 = run 'sh', $repo-root.add('install').Str, :out, :err, :env(%env);
+    my $o1 = $p1.out.slurp(:close);
+    my $e1 = $p1.err.slurp(:close);
+    is $p1.exitcode, 0, 'installer exits 0' or diag "out: $o1\nerr: $e1";
+
+    my $launcher = $fake.add('bin/spoz2');
+    ok $launcher.f && $launcher.x, 'launcher is installed and executable';
+    like $launcher.slurp, /'"' $($fake.add('share/cli/bin/spoz2').Str) '"'/,
+        'launcher runs spoz2 from the installed checkout';
+    like $o1, /'installed:'/, 'installer reports success';
+
+    my $p2 = run 'sh', $repo-root.add('install').Str, :out, :err, :env(%env);
+    $p2.out.slurp(:close);
+    $p2.err.slurp(:close);
+    is $p2.exitcode, 0, 're-running the installer updates cleanly';
+}
+else {
+    skip 'no git available', 5;
+}

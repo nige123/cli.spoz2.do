@@ -36,6 +36,11 @@ behaviours:
       guides those steps, stores the connection, and submits evidence itself.
       A report carries presence, digest, counts and check outcomes - never the
       text of the SPOZ2.
+    - The CLI installs with one curl command: the installer fetches the code,
+      fetches the runtime too when it is missing (into the user's home,
+      nothing system-wide), links spoz2 onto the PATH and verifies it runs.
+      Nobody needs to know or care what language the tool is written in to
+      install it.
 
 invariants:
     - Invariant 0.0: humans first. This software exists to help humans
@@ -83,6 +88,13 @@ constraints:
       so the format can evolve without breaking older files.
 
 decisions:
+    - 2026-09-10: Installation is one curl command (user ruling: much easier,
+      and people may not even need to know it uses Raku). The repo ships a
+      POSIX-sh installer served raw from GitHub; when no runtime is present
+      it fetches Rakudo via rakubrew into the user's home instead of asking
+      them to care, writes a launcher into ~/.local/bin, and every failure
+      path ends with plain instructions. A branded install URL on a spoz2.do
+      domain is a later DNS decision.
     - 2026-09-10: The user ruled the CLI should let a maintainer register a
       SPOZ2 so it is discoverable, signing up first. Sign-up stays on the web
       (register.spoz2.do, email passcode - a CLI cannot read your email);
@@ -161,3 +173,5 @@ direction:
 
 references:
     - licence: Apache-2.0 (LICENSE file; also declared in META6.json)
+    - trademark: spoz2 (tm) is a trademark of Nige Ltd -
+      https://nigelhamilton.com/#spoz2

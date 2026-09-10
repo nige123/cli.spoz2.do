@@ -276,11 +276,27 @@ carries no registry fields.
 
 ## Install
 
-Requires [Rakudo](https://rakudo.org) (Raku) and, for `log`/`diff`, Git.
+One command:
 
 ```text
-git clone <this repository> spoz2
-ln -s "$PWD/spoz2/bin/spoz2" ~/bin/spoz2     # or: cd spoz2 && zef install .
+curl -fsSL https://raw.githubusercontent.com/nige123/cli.spoz2.do/main/install | sh
+```
+
+It fetches spoz2 into `~/.local/share/spoz2`, puts a `spoz2` launcher in
+`~/.local/bin`, and verifies it runs. If the runtime spoz2 needs is not
+already on your machine, the installer fetches that too - into your home
+directory, nothing system-wide, no sudo. Re-running the command updates
+spoz2. Git is the one prerequisite.
+
+For the curious: spoz2 is written in [Raku](https://raku.org) and the
+runtime is [Rakudo](https://rakudo.org) - but you don't need to know or
+care about that to install or use it.
+
+Manual install, if you prefer to see every step:
+
+```text
+git clone https://github.com/nige123/cli.spoz2.do spoz2
+ln -s "$PWD/spoz2/bin/spoz2" ~/.local/bin/spoz2     # or: cd spoz2 && zef install .
 ```
 
 `bin/spoz2` finds its own `lib/` when run from a checkout (including via a
@@ -304,6 +320,9 @@ prove --ext .rakutest -e 'raku -Ilib' t/
 
 This project keeps its own `SPOZ2`. Read it.
 
-## Licence
+## Licence and trademark
 
 Apache-2.0 - see `LICENSE`.
+
+spoz2 (tm) is a trademark of [Nige Ltd](https://nigelhamilton.com/#spoz2).
+The code is open; the name and marks are Nige Ltd's.

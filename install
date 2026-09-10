@@ -1,0 +1,77 @@
+#!/bin/sh
+# spoz2 installer:
+#
+#     curl -fsSL https://raw.githubusercontent.com/nige123/cli.spoz2.do/main/install | sh
+#
+# Fetches the spoz2 CLI into your home directory and puts `spoz2` on your
+# PATH. If the runtime it needs is missing, it fetches that too (via
+# rakubrew, also into your home - nothing system-wide, no sudo). Re-running
+# the installer updates spoz2.
+#
+# Overrides: SPOZ2_REPO (git URL), SPOZ2_HOME (checkout parent),
+# SPOZ2_BIN (launcher directory), SPOZ2_NO_RUNTIME=1 (never fetch a runtime).
+set -eu
+
+REPO="${SPOZ2_REPO:-https://github.com/nige123/cli.spoz2.do}"
+DATA="${SPOZ2_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/spoz2}"
+BIN_DIR="${SPOZ2_BIN:-$HOME/.local/bin}"
+CHECKOUT="$DATA/cli"
+RAKUBREW="$HOME/.rakubrew/bin/rakubrew"
+
+say()  { printf '%s\n' "$*"; }
+fail() { printf 'spoz2 install: %s\n' "$*" >&2; exit 1; }
+
+command -v git  >/dev/null 2>&1 || fail "git is required (https://git-scm.com); install it and re-run"
+
+# -- the spoz2 code -----------------------------------------------------------
+if [ -d "$CHECKOUT/.git" ]; then
+    say "updating spoz2 in $CHECKOUT"
+    git -C "$CHECKOUT" pull --ff-only --quiet
+else
+    mkdir -p "$DATA"
+    say "fetching spoz2 into $CHECKOUT"
+    git clone --depth 1 --quiet "$REPO" "$CHECKOUT" 2>/dev/null \
+        || git clone --depth 1 --quiet "$REPO" "$CHECKOUT"
+fi
+
+# -- the runtime, only when missing -------------------------------------------
+RAKU="$(command -v raku 2>/dev/null || true)"
+[ -n "$RAKU" ] || [ ! -x "$HOME/.rakubrew/shims/raku" ] || RAKU="$HOME/.rakubrew/shims/raku"
+if [ -z "$RAKU" ]; then
+    [ "${SPOZ2_NO_RUNTIME:-}" != 1 ] \
+        || fail "the runtime is missing; install Rakudo (https://rakudo.org) and re-run"
+    say "spoz2 needs its runtime; fetching it into $HOME/.rakubrew (one-off, a few minutes) ..."
+    command -v curl >/dev/null 2>&1 \
+        || fail "fetching the runtime needs curl; or install Rakudo yourself: https://rakudo.org"
+    command -v perl >/dev/null 2>&1 \
+        || fail "fetching the runtime needs perl; or install Rakudo yourself: https://rakudo.org"
+    curl -fsSL https://rakubrew.io/install-on-perl.sh | sh >/dev/null 2>&1 \
+        || fail "could not set up rakubrew; install Rakudo yourself: https://rakudo.org"
+    "$RAKUBREW" mode shim >/dev/null 2>&1 || true
+    "$RAKUBREW" download >/dev/null \
+        || fail "could not download the runtime; install Rakudo yourself: https://rakudo.org"
+    RAKU="$HOME/.rakubrew/shims/raku"
+    [ -x "$RAKU" ] || fail "runtime fetched but not found at $RAKU; please report this"
+fi
+
+# -- the command --------------------------------------------------------------
+mkdir -p "$BIN_DIR"
+cat > "$BIN_DIR/spoz2" <<LAUNCH
+#!/bin/sh
+# spoz2 launcher, written by the spoz2 installer; re-run the installer to update.
+exec "$RAKU" "$CHECKOUT/bin/spoz2" "\$@"
+LAUNCH
+chmod +x "$BIN_DIR/spoz2"
+
+say "checking the installation (the first run compiles; about half a minute) ..."
+"$BIN_DIR/spoz2" version >/dev/null 2>&1 \
+    || "$RAKU" -I "$CHECKOUT/lib" -c "$CHECKOUT/bin/spoz2" >/dev/null \
+    || fail "installed, but spoz2 does not run; please report this"
+
+say "installed: $BIN_DIR/spoz2"
+case ":$PATH:" in
+    *":$BIN_DIR:"*) ;;
+    *) say "note: $BIN_DIR is not on your PATH. Add this line to your shell profile:"
+       say "    export PATH=\"$BIN_DIR:\$PATH\"" ;;
+esac
+say "next: cd your-project && spoz2 init"

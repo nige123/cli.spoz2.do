@@ -31,6 +31,7 @@ sub USAGE() {
       spoz2 report [--dry-run|--strict]  submit evidence (presence, digest,
                                            counts, check outcome - never the
                                            text); advisory: exit 0 unless --strict
+      spoz2 version                      print the tool and format versions
 
     FILE is an explicit .spoz2 document; otherwise the nearest SPOZ2 in this
     directory or its parents is used.
@@ -122,6 +123,10 @@ multi MAIN('diff', *@args) {
         note $err.trim if $err.trim ne '';
         $rc;
     }
+}
+
+multi MAIN('version') {
+    say "spoz2 {VERSION} (SPOZ2 format {FORMAT-VERSION})";
 }
 
 multi MAIN('register', Str :$url, Str :$token, Str :$file) {
