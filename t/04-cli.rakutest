@@ -34,11 +34,11 @@ ok $rc == 0 && $out.contains('invariant zero:') && $out.ends-with("OK SPOZ2\n"),
 # explicit .spoz2 file from a nested directory
 my $nested = $dir.add('docs');
 $nested.mkdir;
-$nested.add('security.spoz2').spurt("SPOZ2 0.1\n\ngist:\n    Security intent.\n\ninvariants:\n    - Secrets never logged.\n");
+$nested.add('security.spoz2').spurt("SPOZ2 0.0\n\ngist:\n    Security intent.\n\ninvariants:\n    - Secrets never logged.\n");
 ($rc, $out, $err) = spoz2($nested, 'check', 'security.spoz2');
-is $rc, 0, 'explicit .spoz2 checked; invariant-zero warning is not an error';
-like $out, /"warning: invariant zero ('humans come first')" .* 'OK security.spoz2'/,
-    'missing invariant zero warns but the file still passes';
+is $rc, 0, 'explicit .spoz2 checked and passes';
+like $out, /'inherited from SPOZ2 0.0' .* 'OK security.spoz2'/,
+    'omitted invariant zero is reported as inherited, and the file passes';
 ($rc, $out, $err) = spoz2($nested, 'show', 'security.spoz2', 'invariants');
 is $out, "- Secrets never logged.\n", 'show section of explicit .spoz2';
 
@@ -48,7 +48,7 @@ my $reply = $drafted.add('reply.txt');
 $reply.spurt(qq:to/END/);
     Here is the completed file:
     ```
-    SPOZ2 0.1
+    SPOZ2 0.0
 
     gist:
         A fake project, distilled by a fake agent.
@@ -84,7 +84,7 @@ my $nonsense = temp-dir;
 %*ENV<SPOZ2_AGENT_CMD> = 'echo not a spec';
 ($rc, $out, $err) = spoz2($nonsense, 'init');
 is ($rc, $out), (0, "Created SPOZ2\n"), 'nonsense reply falls back to the scaffold';
-like $err, /"no 'SPOZ2 0.4' header"/, 'the validation failure is reported';
+like $err, /"no 'SPOZ2 0.0' header"/, 'the validation failure is reported';
 
 # --/agent never runs the agent
 my $manual = temp-dir;

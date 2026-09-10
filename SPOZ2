@@ -1,4 +1,4 @@
-SPOZ2 0.4
+SPOZ2 0.0
 
 # What is this project supposed to do?
 # Humans and AI tools should treat this file as the authoritative
@@ -74,6 +74,15 @@ constraints:
       so the format can evolve without breaking older files.
 
 decisions:
+    - 2026-09-10: The numbering is retro-fitted to start from 0.0 (user
+      ruling: version 0.0 is what is being developed, and there are no
+      other users yet, so the renumber is safe).  The 0.1 to 0.4 ladder
+      of the past two days collapses into the single in-development
+      SPOZ2 0.0, whose canonical invariant zero is the HUMANS FIRST
+      text; the ladder's history stays in git.  Version immutability
+      discipline (frozen text and digest per version, changes only via
+      a new version with a public change record) begins with the first
+      release.
     - 2026-09-10: Format 0.4, ruled by the user: the headline tightens
       to 'humans first'.  0.3 (published minutes earlier, adopted by no
       file) is superseded, not rewritten: its text and digest stay in

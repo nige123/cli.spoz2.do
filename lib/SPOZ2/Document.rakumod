@@ -1,28 +1,25 @@
 unit class SPOZ2::Document;
 
-#| The SPOZ2 format version this tool writes.  Older known versions are
-#| still read; each binds its own canonical invariant zero.
-constant FORMAT-VERSION is export = '0.4';
-constant @KNOWN-VERSIONS is export = ('0.1', '0.2', '0.3', '0.4');
+#| The SPOZ2 format version.  0.0 is IN DEVELOPMENT: there are no other
+#| users yet, so the numbering was retro-fitted to start here (user
+#| ruling, 2026-09-10) and the canonical text below may still change
+#| while 0.0 is being developed.  Version immutability discipline (a
+#| frozen text and digest per version, changes only via a new version
+#| with a public change record) begins with the first release.
+constant FORMAT-VERSION is export = '0.0';
+constant @KNOWN-VERSIONS is export = ('0.0',);
 
 #| Placeholder gist written by `spoz2 init`.  `check` treats it as empty.
 constant GIST-PLACEHOLDER is export = '<What is this thing supposed to do?>';
 
 #| Invariant zero: every conforming SPOZ2 incorporates the canonical
-#| invariant zero of its declared format version, whether or not it
-#| repeats the text locally (inheritance).  Omitting the text does not
-#| remove the obligation; no entry may weaken or override it.  `init`
-#| seeds the current text; `check` verifies the binding and any locally
-#| repeated text.  The digest identifies the adopted text, nothing more:
-#| stating a rule, or hashing it, does not make software obey it.
-#|
-#| Canonical texts are FROZEN per format version.  Changing a word is a
-#| new format version with a public change record, never an edit here.
-constant INVARIANT-ZERO-V01 is export = 'Invariant zero: humans come first. '
-    ~ 'This software exists to help humans thrive. It never harms a human '
-    ~ 'and never helps anyone harm one, and when any other entry conflicts '
-    ~ 'with this one, this one wins.';
-constant INVARIANT-ZERO-V02 is export = 'Invariant zero: humans come first. '
+#| invariant zero of its format version, whether or not it repeats the
+#| text locally (inheritance).  Omitting the text does not remove the
+#| obligation; no entry may weaken or override it.  `init` seeds it;
+#| `check` verifies the binding and any locally repeated text.  The
+#| digest identifies the adopted text, nothing more: stating a rule, or
+#| hashing it, does not make software obey it.
+constant INVARIANT-ZERO is export = 'Invariant 0.0: humans first. '
     ~ 'This software exists to help humans thrive and respect each '
     ~ "person's dignity. It must not cause or assist harm to people; no "
     ~ 'claimed greater good makes a person disposable. It must preserve '
@@ -32,49 +29,9 @@ constant INVARIANT-ZERO-V02 is export = 'Invariant zero: humans come first. '
     ~ 'what it is, what it knows, what it has done, and what remains '
     ~ 'uncertain. No other entry may weaken or override this invariant.';
 
-#| SPOZ2 0.3 (2026-09-10): the designation becomes 'Invariant 0.0',
-#| reserving the 0.x space for the foundation; the law's clauses are
-#| unchanged from 0.2.
-constant INVARIANT-ZERO-V03 is export = 'Invariant 0.0: humans come first. '
-    ~ 'This software exists to help humans thrive and respect each '
-    ~ "person's dignity. It must not cause or assist harm to people; no "
-    ~ 'claimed greater good makes a person disposable. It must preserve '
-    ~ 'meaningful human oversight: people can understand its consequential '
-    ~ 'actions, challenge its decisions, and exercise appropriate control, '
-    ~ 'including correction and safe stopping. It must honestly represent '
-    ~ 'what it is, what it knows, what it has done, and what remains '
-    ~ 'uncertain. No other entry may weaken or override this invariant.';
-
-#| SPOZ2 0.4 (2026-09-10): the headline tightens to 'humans first'
-#| (user ruling); clauses otherwise unchanged.  0.3 was superseded the
-#| same day, before any file adopted it - recorded, not rewritten.
-constant INVARIANT-ZERO-V04 is export = 'Invariant 0.0: humans first. '
-    ~ 'This software exists to help humans thrive and respect each '
-    ~ "person's dignity. It must not cause or assist harm to people; no "
-    ~ 'claimed greater good makes a person disposable. It must preserve '
-    ~ 'meaningful human oversight: people can understand its consequential '
-    ~ 'actions, challenge its decisions, and exercise appropriate control, '
-    ~ 'including correction and safe stopping. It must honestly represent '
-    ~ 'what it is, what it knows, what it has done, and what remains '
-    ~ 'uncertain. No other entry may weaken or override this invariant.';
-
-#| The canonical text and its sha256 (of the exact one-line UTF-8 text,
-#| no trailing newline), per format version.
-constant %INVARIANT-ZERO-CANON is export = %(
-    '0.1' => INVARIANT-ZERO-V01,
-    '0.2' => INVARIANT-ZERO-V02,
-    '0.3' => INVARIANT-ZERO-V03,
-    '0.4' => INVARIANT-ZERO-V04,
-);
-constant %INVARIANT-ZERO-DIGEST is export = %(
-    '0.1' => '05c958a65fdbef4a02a23e9099b772fb8b4bef05a3d56e63c3f255f34cf89e75',
-    '0.2' => '682f4ea25010ba8ec7aa8cc48fd7b10e2f1db4e7e9728ce82199cc784ac76598',
-    '0.3' => 'a19ea6a24e3a833b1fde84e921a070fe483a05fad33e0270c1cb8e701833088b',
-    '0.4' => 'd072a03f407dc76d63c84c5fc278b2e23cf5527873d32d7e4323763874f56605',
-);
-
-#| What the current tool seeds (the current format version's text).
-constant INVARIANT-ZERO is export = INVARIANT-ZERO-V04;
+#| sha256 of the exact one-line UTF-8 canonical text, no trailing newline.
+constant INVARIANT-ZERO-DIGEST is export =
+    'd072a03f407dc76d63c84c5fc278b2e23cf5527873d32d7e4323763874f56605';
 
 #| The short teaching version, for pages and slides, never for files.
 constant INVARIANT-ZERO-SHORT is export =
@@ -173,11 +130,11 @@ method ok(--> Bool) { !self.errors }
 method invariant-zero-status(--> Str) {
     my $v = ($!version.defined && $!version (elem) @KNOWN-VERSIONS) ?? $!version !! Str;
     return 'invariant zero: binding not established (unknown format version)' without $v;
-    my $digest = %INVARIANT-ZERO-DIGEST{$v}.substr(0, 12);
+    my $digest = INVARIANT-ZERO-DIGEST.substr(0, 12);
     my $inv    = self.section('invariants');
     my $zero   = $inv ?? $inv.items.first({ is-invariant-zero-text(.text) }) !! Nil;
     with $zero {
-        return squish-ws(.text) eq squish-ws(%INVARIANT-ZERO-CANON{$v})
+        return squish-ws(.text) eq squish-ws(INVARIANT-ZERO)
             ?? "invariant zero: repeated locally, matches the canonical SPOZ2 $v text (sha256 $digest)"
             !! "invariant zero: repeated locally but differs from the canonical SPOZ2 $v text (sha256 $digest binds regardless)";
     }
@@ -306,7 +263,7 @@ method !validate() {
     # Invariant zero binds through the format version: a file that omits
     # the text is still bound by it (inheritance).  Warnings, never errors.
     my $v     = ($!version.defined && $!version (elem) @KNOWN-VERSIONS) ?? $!version !! Str;
-    my $canon = $v.defined ?? %INVARIANT-ZERO-CANON{$v} !! Str;
+    my $canon = $v.defined ?? INVARIANT-ZERO !! Str;
     my $inv   = self.section('invariants');
     my $first = $inv ?? $inv.items.head !! Nil;
     my $zero  = $inv ?? $inv.items.first({ is-invariant-zero-text(.text) }) !! Nil;
@@ -321,14 +278,8 @@ method !validate() {
                 :warning);
         }
     }
-    elsif $v.defined && $v eq '0.1' {
-        # The published 0.1 behaviour: absence draws the adoption warning.
-        my $line = $first.defined ?? $first.line !! ($inv ?? $inv.line !! (@!lines.elems max 1));
-        self!problem($line, "invariant zero ('humans come first') should be the first invariant",
-            :warning);
-    }
-    # From 0.2, omission is legitimate: the binding is inherited and
-    # reported by invariant-zero-status.
+    # Omission is legitimate: the binding is inherited from the format
+    # version and reported by invariant-zero-status.
 }
 
 #| Whitespace-insensitive comparison for canonical text (entries are

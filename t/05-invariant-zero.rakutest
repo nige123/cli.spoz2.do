@@ -1,73 +1,53 @@
 # Copyright Nige Ltd. Author: Nigel Hamilton.
-# Invariant zero: inheritance, canonical-text verification, version
-# binding, and accurate check reporting.  A digest identifies the adopted
-# text; nothing here claims that stating or hashing a rule makes software
-# obey it - these tests pin what the TOOL verifies and reports.
+# Invariant zero under the in-development format 0.0: inheritance,
+# canonical-text verification and accurate check reporting.  A digest
+# identifies the adopted text; nothing here claims that stating or hashing
+# a rule makes software obey it - these tests pin what the TOOL verifies.
 use Test;
 use lib 'lib';
 use SPOZ2::Document;
 
-plan 22;
+plan 12;
 
 my $g = "gist:\n    hi\n";
 
-# --- inheritance: a 0.2 file that omits the text is still bound ---------
-my $inherit = SPOZ2::Document.parse("SPOZ2 0.2\n\n$g\ninvariants:\n    - Something project-specific.\n");
-ok $inherit.ok, '0.2 file without the text has no errors';
+# --- inheritance: omitting the text removes nothing ----------------------
+my $inherit = SPOZ2::Document.parse("SPOZ2 0.0\n\n$g\ninvariants:\n    - Something project-specific.\n");
+ok $inherit.ok, 'a file without the text has no errors';
 nok $inherit.warnings.grep(*.Str.contains('invariant zero')),
-    '0.2: omission draws no warning (the obligation is inherited, not optional)';
-like $inherit.invariant-zero-status, /'inherited from SPOZ2 0.2'/,
-    '0.2: status reports the inherited binding';
+    'omission draws no warning: the obligation is inherited';
+like $inherit.invariant-zero-status, /'inherited from SPOZ2 0.0'/,
+    'status reports the inherited binding';
 like $inherit.invariant-zero-status, /'still binding'/,
-    '0.2: status says omission does not remove the obligation';
+    'status says omission does not remove the obligation';
 
-# --- canonical-text verification ----------------------------------------
-my $match = SPOZ2::Document.parse("SPOZ2 0.2\n\n$g\ninvariants:\n    - " ~ INVARIANT-ZERO-V02 ~ "\n");
-nok $match.warnings, '0.2 canonical text repeated verbatim draws no warning';
-like $match.invariant-zero-status, /'matches the canonical SPOZ2 0.2 text'/,
+# --- canonical-text verification -----------------------------------------
+my $match = SPOZ2::Document.parse("SPOZ2 0.0\n\n$g\ninvariants:\n    - " ~ INVARIANT-ZERO ~ "\n");
+nok $match.warnings, 'the canonical text repeated verbatim draws no warning';
+like $match.invariant-zero-status, /'matches the canonical SPOZ2 0.0 text'/,
     'status reports a verified local match';
+like INVARIANT-ZERO, /^ 'Invariant 0.0: humans first.' /,
+    'the canonical headline is HUMANS FIRST under the 0.0 designation';
 
-my $drift = SPOZ2::Document.parse("SPOZ2 0.2\n\n$g\ninvariants:\n    - Invariant zero: humans come first. But reworded weakly.\n");
+my $drift = SPOZ2::Document.parse("SPOZ2 0.0\n\n$g\ninvariants:\n    - Invariant 0.0: humans first. But reworded weakly.\n");
 ok $drift.warnings.grep(*.Str.contains('differs from the canonical')),
     'a reworded invariant zero is flagged as differing from canonical';
 like $drift.invariant-zero-status, /'binds regardless'/,
     'status says the canonical text binds despite local drift';
 
-# --- version binding: each version keeps its own frozen text ------------
-my $old = SPOZ2::Document.parse("SPOZ2 0.1\n\n$g\ninvariants:\n    - " ~ INVARIANT-ZERO-V01 ~ "\n");
-nok $old.warnings, '0.1 file with the frozen 0.1 text stays clean (history preserved)';
-my $crossed = SPOZ2::Document.parse("SPOZ2 0.1\n\n$g\ninvariants:\n    - " ~ INVARIANT-ZERO-V02 ~ "\n");
-ok $crossed.warnings.grep(*.Str.contains('canonical SPOZ2 0.1')),
-    '0.2 text under a 0.1 header is flagged against the 0.1 canonical';
-isnt INVARIANT-ZERO-V01, INVARIANT-ZERO-V02, 'the two versions have distinct frozen texts';
-is INVARIANT-ZERO, INVARIANT-ZERO-V04, 'the current tool seeds the 0.4 text';
+# legacy designation is still recognised as invariant zero (and flagged)
+my $legacy = SPOZ2::Document.parse("SPOZ2 0.0\n\n$g\ninvariants:\n    - Invariant zero: humans come first. Old spelling.\n");
+ok $legacy.warnings.grep(*.Str.contains('differs from the canonical')),
+    'the legacy Invariant zero designation is recognised and flagged';
 
-# --- 0.4: HUMANS FIRST headline; 0.3 stayed frozen -----------------------
-my $v4 = SPOZ2::Document.parse("SPOZ2 0.4\n\n$g\ninvariants:\n    - " ~ INVARIANT-ZERO-V04 ~ "\n");
-nok $v4.warnings, '0.4 canonical text (humans first) is clean';
-isnt INVARIANT-ZERO-V03, INVARIANT-ZERO-V04,
-    '0.3 keeps its own frozen text (superseded before adoption, never rewritten)';
+# --- the published digest matches the canonical bytes --------------------
+my $proc = run 'sha256sum', :in, :out;
+$proc.in.print(INVARIANT-ZERO);
+$proc.in.close;
+is $proc.out.slurp(:close).words.head, INVARIANT-ZERO-DIGEST,
+    'the published digest matches the canonical text bytes';
 
-# --- 0.3: the designation is Invariant 0.0; legacy lead still recognised -
-my $v3 = SPOZ2::Document.parse("SPOZ2 0.3\n\n$g\ninvariants:\n    - " ~ INVARIANT-ZERO-V03 ~ "\n");
-nok $v3.warnings, '0.3 canonical text (Invariant 0.0 lead) is clean';
-like $v3.invariant-zero-status, /'matches the canonical SPOZ2 0.3 text'/,
-    '0.3 status reports the verified match';
-my $legacy-lead = SPOZ2::Document.parse("SPOZ2 0.3\n\n$g\ninvariants:\n    - " ~ INVARIANT-ZERO-V02 ~ "\n");
-ok $legacy-lead.warnings.grep(*.Str.contains('differs from the canonical SPOZ2 0.3')),
-    'the legacy Invariant zero lead is still recognised, and flagged as pre-0.3 wording';
-
-# --- published digests match the canonical bytes ------------------------
-for '0.1', '0.2', '0.3', '0.4' -> $v {
-    my $proc = run 'sha256sum', :in, :out;
-    $proc.in.print(%INVARIANT-ZERO-CANON{$v});
-    $proc.in.close;
-    my $sum = $proc.out.slurp(:close).words.head;
-    is $sum, %INVARIANT-ZERO-DIGEST{$v},
-        "published digest for $v matches the canonical text bytes";
-}
-
-# --- unknown version: no false binding claim ----------------------------
+# --- unknown version: no false binding claim -----------------------------
 my $unknown = SPOZ2::Document.parse("SPOZ2 9.9\n\n$g\ninvariants:\n    - x\n");
 like $unknown.invariant-zero-status, /'not established'/,
     'an unknown format version never claims a verified binding';

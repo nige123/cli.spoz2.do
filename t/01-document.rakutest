@@ -4,7 +4,7 @@ use SPOZ2::Document;
 plan 29;
 
 my $valid = q:to/END/;
-    SPOZ2 0.1
+    SPOZ2 0.0
 
     # a comment
     gist:
@@ -38,20 +38,20 @@ is $doc.section('invariants').last-line, 14, 'last content line tracked';
 is $doc.section('invariants').indent, '    ', 'indent tracked';
 
 # duplicate sections
-my $dup = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    hi\n\ninvariants:\n\ninvariants:\n");
+my $dup = SPOZ2::Document.parse("SPOZ2 0.0\n\ngist:\n    hi\n\ninvariants:\n\ninvariants:\n");
 nok $dup.ok, 'duplicate section fails';
 like $dup.report.join("\n"), /"SPOZ2:8: duplicate section 'invariants' (first defined at line 6)"/, 'duplicate reported with line';
 
 # gist problems
-my $empty = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n\nbehaviours:\n");
+my $empty = SPOZ2::Document.parse("SPOZ2 0.0\n\ngist:\n\nbehaviours:\n");
 nok $empty.ok, 'empty gist fails';
 like $empty.report.join("\n"), /'SPOZ2:3: gist is empty'/, 'empty gist reported';
 
-my $placeholder = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    {GIST-PLACEHOLDER}\n");
+my $placeholder = SPOZ2::Document.parse("SPOZ2 0.0\n\ngist:\n    {GIST-PLACEHOLDER}\n");
 nok $placeholder.ok, 'placeholder gist fails';
 like $placeholder.report[0], /placeholder/, 'placeholder reported';
 
-my $nogist = SPOZ2::Document.parse("SPOZ2 0.1\n\nbehaviours:\n    - x\n");
+my $nogist = SPOZ2::Document.parse("SPOZ2 0.0\n\nbehaviours:\n    - x\n");
 like $nogist.report.join, /"missing 'gist:'"/, 'missing gist reported';
 
 # header
@@ -62,21 +62,21 @@ ok $ver.ok, 'unknown version is not an error';
 ok $ver.warnings».Str.grep(*.contains('unsupported SPOZ2 version')), 'unknown version warns';
 
 # malformed entries
-my $bad = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    hi\n\ninvariants:\n    not an item\n    -\nstray\n");
+my $bad = SPOZ2::Document.parse("SPOZ2 0.0\n\ngist:\n    hi\n\ninvariants:\n    not an item\n    -\nstray\n");
 is $bad.errors».line, (7, 8, 9), 'malformed lines reported with correct line numbers';
 like $bad.errors[0].Str, /"expected a '- ' entry"/, 'non-item in list section';
 like $bad.errors[1].Str, /'empty entry'/, 'empty item';
 like $bad.errors[2].Str, /'unexpected text at column 0'/, 'stray text';
 
 # unknown sections are preserved, with a warning
-my $unk = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    hi\n\nrisks:\n    - We chose Raku.\n");
+my $unk = SPOZ2::Document.parse("SPOZ2 0.0\n\ngist:\n    hi\n\nrisks:\n    - We chose Raku.\n");
 ok $unk.ok && $unk.warnings».Str.grep(*.contains("unknown section 'risks'")) && $unk.section('risks').items[0].text eq 'We chose Raku.',
     'unknown section kept, warned about, not an error';
 
-# invariant zero leads every SPOZ2 - a warning, never an error
-my $zeroless = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    hi\n\ninvariants:\n    - Something else first.\n");
+# invariant zero is inherited from the format version - omission is fine
+my $zeroless = SPOZ2::Document.parse("SPOZ2 0.0\n\ngist:\n    hi\n\ninvariants:\n    - Something else first.\n");
 ok $zeroless.ok, 'a file without invariant zero still has no errors';
-like $zeroless.warnings».Str.join, /"invariant zero ('humans come first') should be the first invariant"/,
-    'missing invariant zero warns';
-my $zeroed = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    hi\n\ninvariants:\n    - " ~ INVARIANT-ZERO-V01 ~ "\n");
-nok $zeroed.warnings, 'invariant zero in first place satisfies the check (0.1 text under 0.1)';
+nok $zeroless.warnings.grep(*.Str.contains('invariant zero')),
+    'omission draws no warning: the binding is inherited';
+my $zeroed = SPOZ2::Document.parse("SPOZ2 0.0\n\ngist:\n    hi\n\ninvariants:\n    - " ~ INVARIANT-ZERO ~ "\n");
+nok $zeroed.warnings, 'the canonical text in first place is clean';

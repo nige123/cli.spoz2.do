@@ -53,11 +53,11 @@ throws-like { add-entry($path, 'invariant', '  ') }, X::SPOZ2, message => /'empt
 
 # add to a file whose section is missing appends a new section
 my $mini = $dir.add('mini.spoz2');
-$mini.spurt("SPOZ2 0.1\n\ngist:\n    Mini.\n");
+$mini.spurt("SPOZ2 0.0\n\ngist:\n    Mini.\n");
 add-entry($mini, 'constraint', 'Added to missing section.');
 is check-doc($mini).section('constraints').items[0].text, 'Added to missing section.', 'missing section is created';
 add-entry($mini, 'behaviour', 'Goes before constraints.');
-is $mini.slurp, "SPOZ2 0.1\n\ngist:\n    Mini.\n\nbehaviours:\n    - Goes before constraints.\n\nconstraints:\n    - Added to missing section.\n",
+is $mini.slurp, "SPOZ2 0.0\n\ngist:\n    Mini.\n\nbehaviours:\n    - Goes before constraints.\n\nconstraints:\n    - Added to missing section.\n",
     'missing section is created in canonical order';
 
 # show
@@ -81,7 +81,7 @@ my $agent-dir = temp-dir;
 throws-like { agent-init-draft($agent-dir, :cmd('false')) }, X::AdHoc,
     message => /'agent command failed'/, 'failing agent command dies';
 throws-like { agent-init-draft($agent-dir, :cmd('echo just chatter')) }, X::AdHoc,
-    message => /"no 'SPOZ2 0.4' header"/, 'reply without a header dies';
+    message => /"no 'SPOZ2 0.0' header"/, 'reply without a header dies';
 
 my $placeholder = $agent-dir.add('placeholder.txt');
 $placeholder.spurt(template());
@@ -89,7 +89,7 @@ throws-like { agent-init-draft($agent-dir, :cmd("cat {$placeholder}")) }, X::AdH
     message => /'draft has problems'/, 'reply still holding the placeholder gist dies';
 
 my $gutless = $agent-dir.add('gutless.txt');
-$gutless.spurt("SPOZ2 0.1\n\ngist:\n    A gist with nothing behind it.\n");
+$gutless.spurt("SPOZ2 0.0\n\ngist:\n    A gist with nothing behind it.\n");
 throws-like { agent-init-draft($agent-dir, :cmd("cat {$gutless}")) }, X::AdHoc,
     message => /'draft has no invariants'/, 'reply without invariants dies';
 
@@ -97,7 +97,7 @@ my $good = $agent-dir.add('good.txt');
 $good.spurt(qq:to/END/);
     Here is the completed file:
     ```
-    SPOZ2 0.1
+    SPOZ2 0.0
 
     gist:
         A fake project, distilled by a fake agent.
@@ -108,7 +108,7 @@ $good.spurt(qq:to/END/);
     ```
     END
 my $draft = agent-init-draft($agent-dir, :cmd("cat {$good}"));
-ok $draft.starts-with("SPOZ2 0.1\n"), 'chatter and fences are stripped from the reply';
+ok $draft.starts-with("SPOZ2 0.0\n"), 'chatter and fences are stripped from the reply';
 my $draft-doc = SPOZ2::Document.parse($draft);
 is $draft-doc.section('invariants').items.elems, 3, 'draft keeps its invariants and gains invariant zero';
 is $draft-doc.section('invariants').items[0].text, INVARIANT-ZERO,

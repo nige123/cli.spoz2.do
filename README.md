@@ -42,7 +42,7 @@ may weaken or override it. The short teaching version:
 
 > Help humans thrive. Keep humans in charge. Never fake it.
 
-The canonical text for **SPOZ2 0.4** (the current format version):
+The canonical text for **SPOZ2 0.0** (the in-development format version):
 
 ```text
 invariants:
@@ -59,23 +59,24 @@ invariants:
 
 ### Version binding
 
-Each format release publishes its canonical text and digest (sha256 of the
-exact one-line UTF-8 text, no trailing newline). Changing a word of the
-canonical text requires a new format version and a public change record;
-existing versions keep their original text and digest forever, and moving a
-document to another governing format version is an explicit, reviewable edit
-to its header line.
+The format is **version 0.0, in development**: there are no released
+versions yet, the canonical text above may still change while 0.0 is being
+developed, and every current file and reference carries `SPOZ2 0.0`. The
+current canonical text's sha256 (exact one-line UTF-8 text, no trailing
+newline):
 
-| Format | Canonical invariant zero | sha256 |
-|---|---|---|
-| SPOZ2 0.1 | "...It never harms a human and never helps anyone harm one, and when any other entry conflicts with this one, this one wins." | `05c958a65fdbef4a02a23e9099b772fb8b4bef05a3d56e63c3f255f34cf89e75` |
-| SPOZ2 0.2 | The full purpose/dignity/agency/honesty text, designated "Invariant zero" | `682f4ea25010ba8ec7aa8cc48fd7b10e2f1db4e7e9728ce82199cc784ac76598` |
-| SPOZ2 0.3 | The same clauses, designated "Invariant 0.0", headline "humans come first" (superseded by 0.4 the same day, before any file adopted it) | `a19ea6a24e3a833b1fde84e921a070fe483a05fad33e0270c1cb8e701833088b` |
-| SPOZ2 0.4 | The same clauses, headline "humans first" (change record: 2026-09-10, user ruling) | `d072a03f407dc76d63c84c5fc278b2e23cf5527873d32d7e4323763874f56605` |
+```text
+d072a03f407dc76d63c84c5fc278b2e23cf5527873d32d7e4323763874f56605
+```
 
-The digest identifies the adopted text, nothing more. Stating a rule, or
-hashing it, does not make software obey it; the digest exists so nobody can
-quietly rewrite the obligation a file bound itself to.
+From the first release onward, each version publishes a frozen canonical
+text and digest; changing a word then requires a new format version and a
+public change record, existing versions keep their text and digest
+forever, and moving a document between versions is an explicit, reviewable
+edit to its header line. The digest identifies the adopted text, nothing
+more. Stating a rule, or hashing it, does not make software obey it; the
+digest exists so nobody can quietly rewrite the obligation a file bound
+itself to.
 
 ### Supporting obligations
 
@@ -181,7 +182,7 @@ not, and cannot, judge whether the intent is *good*. That is your job.
 Deliberately small, plain text, Git-friendly, obvious to a human or an LLM:
 
 ```text
-SPOZ2 0.4
+SPOZ2 0.0
 
 gist:
     A small tool for ...
@@ -219,9 +220,8 @@ references:
 
 Rules:
 
-- First line: `SPOZ2 <version>`. Currently `SPOZ2 0.4`; earlier known
-  versions are still read, and each binds its own frozen canonical
-  invariant zero (see Version binding above).
+- First line: `SPOZ2 <version>`. Currently `SPOZ2 0.0`, the in-development
+  version (see Version binding above).
 - A section header is a word at column 0 followed by `:` (`gist:`).
 - Everything under a header is indented. `gist` is free text; the other
   sections are lists of `- ` entries. An indented line without `- ` continues
