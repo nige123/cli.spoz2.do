@@ -306,7 +306,7 @@ remaining gaps. CI validation (`spoz2 check`, `spoz2 agent status
 
 ## Registering (optional): make your SPOZ2 discoverable
 
-The [SPOZ2 register](https://register.spoz2.do) gives a project a public
+The [SPOZ2 register](https://spoz2.do) gives a project a public
 card backed by evidence from its own checkout or CI. Registering requires
 signing up first — that happens on the web (email passcode), not in the
 CLI; `spoz2 register` walks you through it:
