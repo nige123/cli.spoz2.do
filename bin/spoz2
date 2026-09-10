@@ -202,7 +202,8 @@ multi MAIN('agent', 'status', Bool :$json = False, Bool :$strict = False, Str :$
     }
 }
 
-multi MAIN('register', Str :$url, Str :$token, Str :$file) {
+multi MAIN('register', Str :$url, Str :$token, Str :$file,
+           Bool :$github = False, Bool :$force = False) {
     attempt {
         my $path = resolve-target($file);
         my $name = display-name($path);
@@ -216,7 +217,26 @@ multi MAIN('register', Str :$url, Str :$token, Str :$file) {
             save-token($u, $token);
             say "Token saved to {token-store()} - outside the repository; do not commit it.";
         }
-        if !$url.defined && !$token.defined {
+        if $github {
+            my $u = register-url($path)
+                // user-error("save the reports URL first: spoz2 register --url=<reports URL> --github");
+            say install-github-workflow($path, :$force) eq 'unchanged'
+                ?? '.github/workflows/spoz2.yml is already set up'
+                !! 'Wrote .github/workflows/spoz2.yml: every push installs spoz2 (runtime cached) and runs spoz2 report';
+            my $t = $token // token-for($u);
+            if $t.defined {
+                given set-github-secret($path, $t) {
+                    when 'set'   { say 'Stored the token as the repository secret S2R_TOKEN (GitHub CLI).' }
+                    when 'no-gh' { say 'No GitHub CLI found. Add a repository secret named S2R_TOKEN with your token (Settings > Secrets and variables > Actions).' }
+                    default      { user-error("the GitHub CLI could not set the secret ($_). Sign in with: gh auth login, then run: spoz2 register --github") }
+                }
+                say "Next: commit and push {display-name(register-file($path))} and .github/workflows/spoz2.yml; every push then reports.";
+            }
+            else {
+                say 'No reporting token yet. Mint one on the Connect CI page, then: spoz2 register --token=<token> --github';
+            }
+        }
+        if !$url.defined && !$token.defined && !$github {
             with register-url($path) -> $u {
                 say "$name reports to $u";
                 say token-for($u).defined
@@ -230,9 +250,8 @@ multi MAIN('register', Str :$url, Str :$token, Str :$file) {
                 To make it discoverable on the SPOZ2 register:
                   1. Sign up first (email passcode): {REGISTER-START}
                   2. Create a project there and mint a reporting token (shown once)
-                  3. Connect this SPOZ2:
-                       spoz2 register --url=<the project's reports URL>
-                       spoz2 register --token=<the token>
+                  3. Connect this SPOZ2 (add --github to set up GitHub Actions too):
+                       spoz2 register --url=<the project's reports URL> --token=<the token>
                   4. Submit evidence: spoz2 report
 
                 A report carries presence, digest, counts and check outcomes -

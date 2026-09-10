@@ -35,10 +35,16 @@ behaviours:
       is a warning, never a failed init, and init never prompts.
     - A maintainer can make a SPOZ2 discoverable by connecting it to the SPOZ2
       register and submitting evidence (spoz2 register, spoz2 report). Signing
-      up comes first, on the web (register.spoz2.do, email passcode); the CLI
-      guides those steps, stores the connection, and submits evidence itself.
-      A report carries presence, digest, counts and check outcomes - never the
-      text of the SPOZ2.
+      up comes first, on the web (spoz2.do, email passcode); the CLI guides
+      those steps, stores the connection, and submits evidence itself. A
+      report carries presence, digest, counts and check outcomes - never the
+      text of the SPOZ2. With --github, spoz2 register also sets up GitHub
+      Actions: it writes a workflow that installs spoz2 (its runtime cached
+      between runs) and runs spoz2 report on every push, so CI evidence
+      carries a real syntax check, and it hands the token to the GitHub CLI on
+      standard input as the repository secret S2R_TOKEN. It never overwrites a
+      different existing workflow without --force, and it leaves committing
+      and pushing to the maintainer.
     - A coding agent can fetch everything it needs to follow a SPOZ2 in one
       offline command (spoz2 agent): the canonical adherence protocol, the
       file's format version and byte digest, the inherited Invariant Zero,
@@ -197,6 +203,14 @@ decisions:
       conflict). init seeds it first in both the scaffold and agent-drafted
       paths; check warns, never errors, when it is missing or not first, so
       existing files stay green while adoption catches up.
+    - 2026-09-10: spoz2 register --github (user ruling, alongside the one-paste
+      Connect CI on the register): it writes a GitHub Actions workflow that
+      installs spoz2 with its runtime cached and runs spoz2 report, which fixes
+      the gap where CI reports from the plain reporter carried checks.syntax
+      not_run and could never qualify a project for its SPOZ2 badge. The token
+      reaches the GitHub CLI on standard input, never argv; committing and
+      pushing stay with the maintainer. The sign-up address moved to spoz2.do
+      with the register's domain.
 
 direction:
     - Make a SPOZ2 directly useful to AI coding tools that simply read it;

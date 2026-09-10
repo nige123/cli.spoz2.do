@@ -5,7 +5,7 @@ use SPOZ2;
 use SPOZ2::Document;
 use SPOZ2::Register;
 
-plan 22;
+plan 36;
 
 # Everything here is offline: no test ever reaches a real register.
 %*ENV<XDG_CONFIG_HOME> = temp-dir.Str;
@@ -15,7 +15,7 @@ plan 22;
 # connection: the reports URL beside the SPOZ2, the token outside the repo
 my $dir  = temp-dir;
 my $path = init(:$dir);
-my $reports-url = 'https://register.spoz2.do/api/v1/projects/p1/reports';
+my $reports-url = 'https://spoz2.do/api/v1/projects/p1/reports';
 nok register-url($path).defined, 'no register URL until saved';
 my $cfg = save-register-url($path, $reports-url);
 is $cfg.basename, '.spoz2-register', 'URL lives beside the SPOZ2';
@@ -63,11 +63,53 @@ else {
     skip 'no git available', 11;
 }
 
+# CLI: --github writes the workflow and hands the token to gh on stdin
+if have-git() {
+    my $repo = temp-dir;
+    run 'git', '-C', $repo.Str, 'init', '-q';
+    run 'git', '-C', $repo.Str, 'config', 'user.email', 't@test';
+    run 'git', '-C', $repo.Str, 'config', 'user.name', 'Test';
+    init(:dir($repo));
+    my $bin = temp-dir;
+    my $gh  = $bin.add('gh');
+    $gh.spurt: qq:to/SH/;
+        #!/bin/sh
+        case "\$1" in --version) echo 'gh version 2'; exit 0;; esac
+        cat > '{$bin.add('gh.stdin')}'
+        echo "\$@" > '{$bin.add('gh.args')}'
+        SH
+    $gh.chmod(0o755);
+    temp %*ENV<PATH> = "{$bin}:{%*ENV<PATH>}";
+    my ($rc, $out, $err) = spoz2($repo, 'register',
+        '--url=https://spoz2.do/api/v1/projects/p9/reports', '--token=tok-123', '--github');
+    is $rc, 0, 'register --url --token --github exits 0';
+    my $wf = $repo.add('.github').add('workflows').add('spoz2.yml');
+    ok $wf.f, 'writes .github/workflows/spoz2.yml';
+    like $wf.slurp, /'spoz2 report'/, 'the workflow runs spoz2 report';
+    like $wf.slurp, /'secrets.S2R_TOKEN'/, 'and reads the token from the repository secret';
+    like $wf.slurp, /'actions/cache'/, 'the runtime is cached between runs';
+    is $bin.add('gh.stdin').slurp.trim, 'tok-123', 'the token reaches gh on standard input';
+    like $bin.add('gh.args').slurp, /'secret set S2R_TOKEN'/, 'as the repository secret S2R_TOKEN';
+    nok $bin.add('gh.args').slurp.contains('tok-123'), 'never on the command line';
+    nok $wf.slurp.contains('tok-123'), 'the token never lands in the repository';
+    ($rc, $out, $err) = spoz2($repo, 'register', '--github');
+    is $rc, 0, 'running --github again is harmless';
+    like $out, /'already set up'/, 'and says so';
+    $wf.spurt("name: mine\n");
+    ($rc, $out, $err) = spoz2($repo, 'register', '--github');
+    is $rc, 1, 'a different existing workflow is never overwritten';
+    like $err, /'--force'/, 'the error says how to replace it';
+    is $wf.slurp, "name: mine\n", 'and the file is untouched';
+}
+else {
+    skip 'no git available', 14;
+}
+
 # CLI: an unconnected SPOZ2 is guided through signing up first
 my $fresh = temp-dir;
 init(:dir($fresh));
 my ($rc, $out, $err) = spoz2($fresh, 'register');
-like $out, /'Sign up first' .* 'register.spoz2.do/start'/, 'register guides sign-up first';
+like $out, /'Sign up first' .* 'https://spoz2.do/start'/, 'register guides sign-up first, on spoz2.do';
 
 # CLI: report outside Git is a hard, plain error
 my $nogit = temp-dir;

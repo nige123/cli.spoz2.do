@@ -314,11 +314,10 @@ CLI; `spoz2 register` walks you through it:
 ```text
 $ spoz2 register
 SPOZ2 is not connected to a register yet.
-  1. Sign up first (email passcode): https://register.spoz2.do/start
+  1. Sign up first (email passcode): https://spoz2.do/start
   2. Create a project there and mint a reporting token (shown once)
-  3. Connect this SPOZ2:
-       spoz2 register --url=<the project's reports URL>
-       spoz2 register --token=<the token>
+  3. Connect this SPOZ2 (add --github to set up GitHub Actions too):
+       spoz2 register --url=<the project's reports URL> --token=<the token>
   4. Submit evidence: spoz2 report
 ```
 
@@ -329,6 +328,13 @@ instead). `spoz2 report` then submits the register's `s2r-report` evidence
 for the exact Git revision: whether the SPOZ2 is present, its sha256
 digest, its grammar line, the invariant count and the outcome of a real
 `spoz2 check` — **never the text of your SPOZ2**.
+
+With `--github`, register also writes `.github/workflows/spoz2.yml`, which
+installs spoz2 (its runtime cached between runs) and runs `spoz2 report` on
+every push, so CI evidence carries a real syntax check. It hands the token
+to the GitHub CLI on standard input as the repository secret `S2R_TOKEN`,
+never overwrites a different workflow without `--force`, and leaves
+committing and pushing to you.
 
 Reports are advisory by design: a failed check is submitted honestly, and
 a register error exits 0 (pass `--strict` to opt into a failing exit).

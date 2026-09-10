@@ -4,13 +4,13 @@ use SPOZ2;
 use SPOZ2::Document;
 use SPOZ2::Git;
 
-#| Client for the SPOZ2 register (register.spoz2.do): the two commands
+#| Client for the SPOZ2 register (spoz2.do): the two commands
 #| behind it (spoz2 register, spoz2 report) are the CLI's only network
 #| opt-ins besides the agent behind init.  A report follows the register's
 #| s2r-report contract and carries presence, digest, counts and check
 #| outcomes - never the text of the SPOZ2.
 
-constant REGISTER-START  is export = 'https://register.spoz2.do/start';
+constant REGISTER-START  is export = 'https://spoz2.do/start';
 constant REPORT-SCHEMA   is export = 's2r-report/1';
 
 # ---------------------------------------------------------- connection
@@ -56,6 +56,76 @@ sub token-for(Str $url --> Str) is export {
     return Str unless $store.f;
     with $store.lines.first({ .split("\t")[0] eq $url }) { return .split("\t")[1].Str }
     Str;
+}
+
+# -------------------------------------------------------------- GitHub
+
+#| The workflow `spoz2 register --github` writes.  On every push it
+#| installs spoz2 (its runtime cached between runs) and runs spoz2 report,
+#| so CI evidence carries a real syntax check.  It runs on GitHub's
+#| machine, whatever system the maintainer develops on.
+sub github-workflow(--> Str) is export {
+    q:to/YAML/;
+    name: spoz2
+    on: [push]
+    jobs:
+      report:
+        runs-on: ubuntu-latest    # GitHub's machine, whatever system you develop on
+        continue-on-error: true   # advisory: never blocks a release
+        steps:
+          - uses: actions/checkout@v4
+          - uses: actions/cache@v4
+            with:
+              path: |
+                ~/.rakubrew
+                ~/.local/share/spoz2
+              key: spoz2-runtime-${{ runner.os }}
+          - run: curl -fsSL https://raw.githubusercontent.com/nige123/cli.spoz2.do/main/install | sh
+          - run: ~/.local/bin/spoz2 report --release "$GITHUB_REF_NAME" --run-id "$GITHUB_RUN_ID"
+            env:
+              S2R_TOKEN: ${{ secrets.S2R_TOKEN }}
+    YAML
+}
+
+sub repo-root(IO::Path $spoz2 --> IO::Path) {
+    my ($rc, $out, $) = git($spoz2, 'rev-parse', '--show-toplevel');
+    register-error('not in a Git repository; --github sets up the repository the SPOZ2 lives in')
+        unless $rc == 0 && $out.trim;
+    $out.trim.IO;
+}
+
+#| Write .github/workflows/spoz2.yml at the repository root.  Never
+#| overwrites a different file unless forced.  Returns 'written' or
+#| 'unchanged'.
+sub install-github-workflow(IO::Path $spoz2, Bool :$force = False --> Str) is export {
+    my $wf  = repo-root($spoz2).add('.github').add('workflows').add('spoz2.yml');
+    my $txt = github-workflow();
+    if $wf.f {
+        return 'unchanged' if $wf.slurp eq $txt;
+        register-error('.github/workflows/spoz2.yml already exists and differs; remove it, or pass --force to replace it')
+            unless $force;
+    }
+    $wf.parent.mkdir;
+    $wf.spurt($txt);
+    'written';
+}
+
+#| Store the token as the repository secret S2R_TOKEN with the GitHub CLI,
+#| handed over on standard input so it never shows in a process listing.
+#| Returns 'set', 'no-gh', or the GitHub CLI's error.
+sub set-github-secret(IO::Path $spoz2, Str $token --> Str) is export {
+    my $root  = repo-root($spoz2);
+    my $probe = try run 'gh', '--version', :out, :err;
+    return 'no-gh' without $probe;
+    $probe.out.slurp(:close);
+    $probe.err.slurp(:close);
+    return 'no-gh' unless $probe.exitcode == 0;
+    my $p = run 'gh', 'secret', 'set', 'S2R_TOKEN', :in, :out, :err, :cwd($root.Str);
+    $p.in.print($token);
+    try $p.in.close;
+    $p.out.slurp(:close);
+    my $err = $p.err.slurp(:close);
+    $p.exitcode == 0 ?? 'set' !! ($err.trim || 'gh secret set failed');
 }
 
 # ------------------------------------------------------------ evidence
