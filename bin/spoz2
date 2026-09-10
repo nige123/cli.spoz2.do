@@ -29,9 +29,10 @@ sub USAGE() {
                                            (gist needs --replace once set)
       spoz2 log [FILE]                   Git history of the SPOZ2
       spoz2 diff [FILE] [REV [REV]]      Git diff of the SPOZ2
-      spoz2 register [--url=U|--token=T] connect this SPOZ2 to the SPOZ2 register
-                                           so it is discoverable (sign up first:
-                                           spoz2.do); no options shows
+      spoz2 register [--url=U --token=T] connect this SPOZ2 to the SPOZ2 register
+                     [--github [--force]]  so it is discoverable (sign up first:
+                                           spoz2.do); --github also sets up
+                                           GitHub Actions; no options shows
                                            the connection status or the steps
       spoz2 report [--dry-run|--strict]  submit evidence (presence, digest,
                                            counts, check outcome - never the
