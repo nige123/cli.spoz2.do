@@ -81,6 +81,10 @@ multi MAIN('check', Str $file?) {
         my $name = display-name($path);
         my $doc  = check-doc($path);
         .say for $doc.report(:$name);
+        say $doc.invariant-zero-status;
+        say 'checked: structure and the invariant-zero binding only; a '
+          ~ 'passing check never means the software is safe, harmless, or '
+          ~ 'that its claims are true';
         if $doc.ok { say "OK $name"; 0 } else { 1 }
     }
 }

@@ -12,7 +12,7 @@ my $dir = temp-dir;
 my $path = init(:$dir);
 ok $path.f, 'init creates SPOZ2';
 is $path.basename, 'SPOZ2', 'root file is named SPOZ2';
-like $path.slurp, /^ 'SPOZ2 0.1' \n/, 'file starts with header';
+like $path.slurp, /^ 'SPOZ2 ' <{FORMAT-VERSION}> \n/, 'file starts with the current format header';
 throws-like { init(:$dir) }, X::SPOZ2, message => /'already exists'/, 'init refuses to overwrite';
 nok check-doc($path).ok, 'freshly initialised SPOZ2 does not pass check (placeholder gist)';
 is check-doc($path).section('invariants').items[0].text, INVARIANT-ZERO,
@@ -81,7 +81,7 @@ my $agent-dir = temp-dir;
 throws-like { agent-init-draft($agent-dir, :cmd('false')) }, X::AdHoc,
     message => /'agent command failed'/, 'failing agent command dies';
 throws-like { agent-init-draft($agent-dir, :cmd('echo just chatter')) }, X::AdHoc,
-    message => /"no 'SPOZ2 0.1' header"/, 'reply without a header dies';
+    message => /"no 'SPOZ2 0.2' header"/, 'reply without a header dies';
 
 my $placeholder = $agent-dir.add('placeholder.txt');
 $placeholder.spurt(template());

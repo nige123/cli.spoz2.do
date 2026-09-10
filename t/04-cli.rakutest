@@ -28,7 +28,8 @@ is $out, "Set gist.\n", 'add gist output';
 ($rc, $out, $err) = spoz2($dir, 'add', 'invariant', 'Always.');
 is $out, "Added invariant.\n", 'add invariant output';
 ($rc, $out, $err) = spoz2($dir, 'check');
-is ($rc, $out), (0, "OK SPOZ2\n"), 'check passes';
+ok $rc == 0 && $out.contains('invariant zero:') && $out.ends-with("OK SPOZ2\n"),
+    'check passes and reports the invariant-zero binding';
 
 # explicit .spoz2 file from a nested directory
 my $nested = $dir.add('docs');
@@ -66,7 +67,8 @@ is ($rc, $out), (0, "Created SPOZ2 (3 invariants, agent-drafted)\n"),
     'agent init reports the draft (its invariants plus invariant zero)';
 like $err, /'review it'/, 'agent init asks for review';
 ($rc, $out, $err) = spoz2($drafted, 'check');
-is ($rc, $out), (0, "OK SPOZ2\n"), 'agent-drafted SPOZ2 passes check';
+ok $rc == 0 && $out.contains('invariant zero:') && $out.ends-with("OK SPOZ2\n"),
+    'agent-drafted SPOZ2 passes check and reports the binding';
 
 # a dead agent command falls back to the scaffold, loudly
 my $fallback = temp-dir;
@@ -82,7 +84,7 @@ my $nonsense = temp-dir;
 %*ENV<SPOZ2_AGENT_CMD> = 'echo not a spec';
 ($rc, $out, $err) = spoz2($nonsense, 'init');
 is ($rc, $out), (0, "Created SPOZ2\n"), 'nonsense reply falls back to the scaffold';
-like $err, /"no 'SPOZ2 0.1' header"/, 'the validation failure is reported';
+like $err, /"no 'SPOZ2 0.2' header"/, 'the validation failure is reported';
 
 # --/agent never runs the agent
 my $manual = temp-dir;

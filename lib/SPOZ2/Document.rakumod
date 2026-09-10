@@ -1,17 +1,54 @@
 unit class SPOZ2::Document;
 
-#| The SPOZ2 format version this tool reads and writes.
-constant FORMAT-VERSION is export = '0.1';
+#| The SPOZ2 format version this tool writes.  Older known versions are
+#| still read; each binds its own canonical invariant zero.
+constant FORMAT-VERSION is export = '0.2';
+constant @KNOWN-VERSIONS is export = ('0.1', '0.2');
 
 #| Placeholder gist written by `spoz2 init`.  `check` treats it as empty.
 constant GIST-PLACEHOLDER is export = '<What is this thing supposed to do?>';
 
-#| Invariant zero: every SPOZ2 leads its invariants with this entry.
-#| `init` seeds it and `check` warns when it is missing or not first.
-constant INVARIANT-ZERO is export = 'Invariant zero: humans come first. '
+#| Invariant zero: every conforming SPOZ2 incorporates the canonical
+#| invariant zero of its declared format version, whether or not it
+#| repeats the text locally (inheritance).  Omitting the text does not
+#| remove the obligation; no entry may weaken or override it.  `init`
+#| seeds the current text; `check` verifies the binding and any locally
+#| repeated text.  The digest identifies the adopted text, nothing more:
+#| stating a rule, or hashing it, does not make software obey it.
+#|
+#| Canonical texts are FROZEN per format version.  Changing a word is a
+#| new format version with a public change record, never an edit here.
+constant INVARIANT-ZERO-V01 is export = 'Invariant zero: humans come first. '
     ~ 'This software exists to help humans thrive. It never harms a human '
     ~ 'and never helps anyone harm one, and when any other entry conflicts '
     ~ 'with this one, this one wins.';
+constant INVARIANT-ZERO-V02 is export = 'Invariant zero: humans come first. '
+    ~ 'This software exists to help humans thrive and respect each '
+    ~ "person's dignity. It must not cause or assist harm to people; no "
+    ~ 'claimed greater good makes a person disposable. It must preserve '
+    ~ 'meaningful human oversight: people can understand its consequential '
+    ~ 'actions, challenge its decisions, and exercise appropriate control, '
+    ~ 'including correction and safe stopping. It must honestly represent '
+    ~ 'what it is, what it knows, what it has done, and what remains '
+    ~ 'uncertain. No other entry may weaken or override this invariant.';
+
+#| The canonical text and its sha256 (of the exact one-line UTF-8 text,
+#| no trailing newline), per format version.
+constant %INVARIANT-ZERO-CANON is export = %(
+    '0.1' => INVARIANT-ZERO-V01,
+    '0.2' => INVARIANT-ZERO-V02,
+);
+constant %INVARIANT-ZERO-DIGEST is export = %(
+    '0.1' => '05c958a65fdbef4a02a23e9099b772fb8b4bef05a3d56e63c3f255f34cf89e75',
+    '0.2' => '682f4ea25010ba8ec7aa8cc48fd7b10e2f1db4e7e9728ce82199cc784ac76598',
+);
+
+#| What the current tool seeds (the current format version's text).
+constant INVARIANT-ZERO is export = INVARIANT-ZERO-V02;
+
+#| The short teaching version, for pages and slides, never for files.
+constant INVARIANT-ZERO-SHORT is export =
+    'Help humans thrive. Keep humans in charge. Never fake it.';
 
 #| The lead that identifies invariant zero, however the rest is worded.
 constant INVARIANT-ZERO-LEAD is export = 'Invariant zero: humans come first';
@@ -93,6 +130,23 @@ method sections-named(Str $name)      { @!sections.grep(*.name eq $name) }
 method errors   { @!problems.grep(!*.warning) }
 method warnings { @!problems.grep(*.warning) }
 method ok(--> Bool) { !self.errors }
+
+#| One line describing the invariant-zero binding this parse established.
+#| `spoz2 check` prints it, so a successful check says what was verified
+#| and never implies more.
+method invariant-zero-status(--> Str) {
+    my $v = ($!version.defined && $!version (elem) @KNOWN-VERSIONS) ?? $!version !! Str;
+    return 'invariant zero: binding not established (unknown format version)' without $v;
+    my $digest = %INVARIANT-ZERO-DIGEST{$v}.substr(0, 12);
+    my $inv    = self.section('invariants');
+    my $zero   = $inv ?? $inv.items.first(*.text.starts-with(INVARIANT-ZERO-LEAD)) !! Nil;
+    with $zero {
+        return squish-ws(.text) eq squish-ws(%INVARIANT-ZERO-CANON{$v})
+            ?? "invariant zero: repeated locally, matches the canonical SPOZ2 $v text (sha256 $digest)"
+            !! "invariant zero: repeated locally but differs from the canonical SPOZ2 $v text (sha256 $digest binds regardless)";
+    }
+    "invariant zero: inherited from SPOZ2 $v (sha256 $digest); not repeated locally, still binding";
+}
 
 #| Problems sorted by line, formatted as "NAME:LINE: message".
 method report(Str :$name = ($!path ?? $!path.Str !! 'SPOZ2')) {
@@ -188,8 +242,8 @@ method !parse-lines() {
 
 method !validate() {
     with $!version {
-        if $_ ne FORMAT-VERSION {
-            self!problem(1, "unsupported SPOZ2 version '$_' (this tool understands {FORMAT-VERSION})", :warning);
+        if $_ !(elem) @KNOWN-VERSIONS {
+            self!problem(1, "unsupported SPOZ2 version '$_' (this tool understands {@KNOWN-VERSIONS.join(' and ')})", :warning);
         }
     }
 
@@ -213,13 +267,34 @@ method !validate() {
         self!problem($s.line, "unknown section '{$s.name}'", :warning);
     }
 
-    # Invariant zero leads every SPOZ2.  A warning, never an error, so
-    # existing files stay usable while they adopt it.
+    # Invariant zero binds through the format version: a file that omits
+    # the text is still bound by it (inheritance).  Warnings, never errors.
+    my $v     = ($!version.defined && $!version (elem) @KNOWN-VERSIONS) ?? $!version !! Str;
+    my $canon = $v.defined ?? %INVARIANT-ZERO-CANON{$v} !! Str;
     my $inv   = self.section('invariants');
     my $first = $inv ?? $inv.items.head !! Nil;
-    unless $first.defined && $first.text.starts-with(INVARIANT-ZERO-LEAD) {
+    my $zero  = $inv ?? $inv.items.first(*.text.starts-with(INVARIANT-ZERO-LEAD)) !! Nil;
+    if $zero.defined {
+        unless $first.defined && $first.text.starts-with(INVARIANT-ZERO-LEAD) {
+            self!problem($zero.line,
+                "invariant zero ('humans come first') should be the first invariant", :warning);
+        }
+        if $canon.defined && squish-ws($zero.text) ne squish-ws($canon) {
+            self!problem($zero.line,
+                "invariant zero text differs from the canonical SPOZ2 $v wording (the canonical text binds regardless)",
+                :warning);
+        }
+    }
+    elsif $v.defined && $v eq '0.1' {
+        # The published 0.1 behaviour: absence draws the adoption warning.
         my $line = $first.defined ?? $first.line !! ($inv ?? $inv.line !! (@!lines.elems max 1));
         self!problem($line, "invariant zero ('humans come first') should be the first invariant",
             :warning);
     }
+    # From 0.2, omission is legitimate: the binding is inherited and
+    # reported by invariant-zero-status.
 }
+
+#| Whitespace-insensitive comparison for canonical text (entries are
+#| wrapped and rejoined; spacing must not defeat the match).
+my sub squish-ws(Str $s --> Str) { $s.words.join(' ') }

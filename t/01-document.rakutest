@@ -78,5 +78,5 @@ my $zeroless = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    hi\n\ninvariants:\
 ok $zeroless.ok, 'a file without invariant zero still has no errors';
 like $zeroless.warnings».Str.join, /"invariant zero ('humans come first') should be the first invariant"/,
     'missing invariant zero warns';
-my $zeroed = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    hi\n\ninvariants:\n    - " ~ INVARIANT-ZERO ~ "\n");
-nok $zeroed.warnings, 'invariant zero in first place satisfies the check';
+my $zeroed = SPOZ2::Document.parse("SPOZ2 0.1\n\ngist:\n    hi\n\ninvariants:\n    - " ~ INVARIANT-ZERO-V01 ~ "\n");
+nok $zeroed.warnings, 'invariant zero in first place satisfies the check (0.1 text under 0.1)';
