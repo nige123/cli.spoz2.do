@@ -1,0 +1,77 @@
+use lib $?FILE.IO.parent.add('lib').Str;
+use Test;
+use SPOZ2Test;
+use SPOZ2;
+use SPOZ2::Document;
+use SPOZ2::Register;
+
+plan 22;
+
+# Everything here is offline: no test ever reaches a real register.
+%*ENV<XDG_CONFIG_HOME> = temp-dir.Str;
+%*ENV<SPOZ2_REGISTER_TOKEN>:delete;
+%*ENV<S2R_TOKEN>:delete;
+
+# connection: the reports URL beside the SPOZ2, the token outside the repo
+my $dir  = temp-dir;
+my $path = init(:$dir);
+my $reports-url = 'https://register.spoz2.do/api/v1/projects/p1/reports';
+nok register-url($path).defined, 'no register URL until saved';
+my $cfg = save-register-url($path, $reports-url);
+is $cfg.basename, '.spoz2-register', 'URL lives beside the SPOZ2';
+is register-url($path), $reports-url, 'URL round-trips';
+nok token-for($reports-url).defined, 'no token until saved';
+save-token($reports-url, 'secret-token');
+is token-for($reports-url), 'secret-token', 'token round-trips from the store';
+ok token-store().Str.starts-with(%*ENV<XDG_CONFIG_HOME>), 'token store honours XDG_CONFIG_HOME';
+nok $dir.dir.first(*.basename eq 'tokens'), 'the token never lands in the project';
+{
+    temp %*ENV<SPOZ2_REGISTER_TOKEN> = 'env-wins';
+    is token-for($reports-url), 'env-wins', 'environment token overrides the store';
+}
+
+# evidence collection mirrors the s2r-report contract
+if have-git() {
+    my $repo = temp-dir;
+    run 'git', '-C', $repo.Str, 'init', '-q';
+    run 'git', '-C', $repo.Str, 'config', 'user.email', 't@test';
+    run 'git', '-C', $repo.Str, 'config', 'user.name', 'Test';
+    my $sp = init(:dir($repo));
+    add-entry($sp, 'gist', 'A registered thing.');
+    run 'git', '-C', $repo.Str, 'add', '-A';
+    run 'git', '-C', $repo.Str, 'commit', '-qm', 'x';
+
+    my %r = collect-report($sp, :release('v1'));
+    is %r<schema_version>, 's2r-report/1', 'report declares its schema';
+    ok %r<revision> ~~ /^ <[0..9a..f]> ** 40 $/, 'revision is the exact commit';
+    ok %r<declaration><present>, 'declaration present';
+    is %r<declaration><invariant_count>, 1, 'invariant count comes from the parser';
+    ok %r<declaration><digest> ~~ /^ <[0..9a..f]> ** 64 $/, 'digest is a sha256';
+    is %r<checks><syntax><outcome>, 'passed', 'syntax outcome from spoz2 itself';
+    is %r<release_label>, 'v1', 'release label carried';
+
+    my $j = json-encode(%r);
+    like $j, /'"schema_version":"s2r-report/1"'/, 'encodes as JSON';
+    unlike $j, /'humans first'/, 'the report never carries invariant text';
+
+    # CLI: --dry-run prints the report and sends nothing
+    my ($rc, $out, $err) = spoz2($repo, 'report', '--dry-run');
+    is $rc, 0, 'report --dry-run exits 0';
+    like $out, /'"revision":"' <[0..9a..f]> ** 40 '"'/, 'dry run prints the payload';
+}
+else {
+    skip 'no git available', 11;
+}
+
+# CLI: an unconnected SPOZ2 is guided through signing up first
+my $fresh = temp-dir;
+init(:dir($fresh));
+my ($rc, $out, $err) = spoz2($fresh, 'register');
+like $out, /'Sign up first' .* 'register.spoz2.do/start'/, 'register guides sign-up first';
+
+# CLI: report outside Git is a hard, plain error
+my $nogit = temp-dir;
+init(:dir($nogit));
+($rc, $out, $err) = spoz2($nogit, 'report', '--dry-run');
+is $rc, 1, 'report outside Git exits 1';
+like $err, /'not in a Git repository'/, 'and says why';

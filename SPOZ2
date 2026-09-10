@@ -30,6 +30,12 @@ behaviours:
       before writing it. Without a working agent, init falls back to the plain
       scaffold, loudly, so it always leaves a file. --/agent skips the agent
       deliberately.
+    - A maintainer can make a SPOZ2 discoverable by connecting it to the SPOZ2
+      register and submitting evidence (spoz2 register, spoz2 report). Signing
+      up comes first, on the web (register.spoz2.do, email passcode); the CLI
+      guides those steps, stores the connection, and submits evidence itself.
+      A report carries presence, digest, counts and check outcomes - never the
+      text of the SPOZ2.
 
 invariants:
     - Invariant 0.0: humans first. This software exists to help humans
@@ -63,9 +69,12 @@ constraints:
       runtime needs are Rakudo and, for log/diff, Git. Agent-assisted init
       shells out to an external agent command the same way and degrades to the
       scaffold without one.
-    - The CLI itself works completely offline: no network, telemetry, accounts,
-      API keys, database or cloud. Only the optional agent command behind init
-      may reach the network, and init still works (scaffold) without it.
+    - The CLI itself works completely offline: no telemetry, database or cloud
+      requirement, and no account needed for any core command. Exactly two
+      explicit opt-ins may reach the network: the optional agent command
+      behind init, and the register commands (spoz2 register, spoz2 report) a
+      maintainer invokes deliberately. Every other command never touches the
+      network, and init still works (scaffold) without an agent.
     - Plain terminals and SSH: no TUI and no terminal-UI libraries; terse
       output, no banners.
     - Plain-text, line-based format (not JSON, not YAML) so Git diffs stay clean
@@ -74,6 +83,16 @@ constraints:
       so the format can evolve without breaking older files.
 
 decisions:
+    - 2026-09-10: The user ruled the CLI should let a maintainer register a
+      SPOZ2 so it is discoverable, signing up first. Sign-up stays on the web
+      (register.spoz2.do, email passcode - a CLI cannot read your email);
+      spoz2 register guides onboarding and stores the connection: the reports
+      URL in .spoz2-register beside the file, the token under ~/.config/spoz2
+      and never in the repository. spoz2 report submits the register's
+      s2r-report evidence (presence, digest, counts, check outcome) via curl,
+      shelled out to like Git. Register errors are advisory - exit 0 unless
+      --strict - matching the register's checks-never-block invariant. The
+      core stays offline and the open format carries no registry fields.
     - 2026-09-10: The numbering is retro-fitted to start from 0.0 (user
       ruling: version 0.0 is what is being developed, and there are no
       other users yet, so the renumber is safe).  The 0.1 to 0.4 ladder
@@ -135,9 +154,10 @@ decisions:
 direction:
     - Make a SPOZ2 directly useful to AI coding tools that simply read it;
       later, possibly a command that prints a compact context block for them.
-    - The wider spoz2.com/spoz2.do vision (registry, certification, commitments,
+    - The wider spoz2.com/spoz2.do vision (certification, commitments,
       standards intelligence) is out of scope for this CLI and must not leak
-      into the open format.
+      into the open format. The register client commands are the one
+      deliberate bridge; the format itself stays registry-free.
 
 references:
     - licence: Apache-2.0 (LICENSE file; also declared in META6.json)

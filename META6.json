@@ -8,7 +8,8 @@
     "provides": {
         "SPOZ2": "lib/SPOZ2.rakumod",
         "SPOZ2::Document": "lib/SPOZ2/Document.rakumod",
-        "SPOZ2::Git": "lib/SPOZ2/Git.rakumod"
+        "SPOZ2::Git": "lib/SPOZ2/Git.rakumod",
+        "SPOZ2::Register": "lib/SPOZ2/Register.rakumod"
     },
     "depends": [],
     "test-depends": [],

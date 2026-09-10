@@ -241,6 +241,39 @@ Rules:
 columns) - it never rewrites your formatting or comments. Your editor remains
 the primary tool.
 
+## Registering (optional): make your SPOZ2 discoverable
+
+The [SPOZ2 register](https://register.spoz2.do) gives a project a public
+card backed by evidence from its own checkout or CI. Registering requires
+signing up first — that happens on the web (email passcode), not in the
+CLI; `spoz2 register` walks you through it:
+
+```text
+$ spoz2 register
+SPOZ2 is not connected to a register yet.
+  1. Sign up first (email passcode): https://register.spoz2.do/start
+  2. Create a project there and mint a reporting token (shown once)
+  3. Connect this SPOZ2:
+       spoz2 register --url=<the project's reports URL>
+       spoz2 register --token=<the token>
+  4. Submit evidence: spoz2 report
+```
+
+The reports URL is saved in `.spoz2-register` beside the SPOZ2 (safe to
+commit); the token is saved under `~/.config/spoz2/` with mode 0600 and
+never in the repository (CI sets `SPOZ2_REGISTER_TOKEN` or `S2R_TOKEN`
+instead). `spoz2 report` then submits the register's `s2r-report` evidence
+for the exact Git revision: whether the SPOZ2 is present, its sha256
+digest, its grammar line, the invariant count and the outcome of a real
+`spoz2 check` — **never the text of your SPOZ2**.
+
+Reports are advisory by design: a failed check is submitted honestly, and
+a register error exits 0 (pass `--strict` to opt into a failing exit).
+Never wire `spoz2 report` into a required merge or release check. These
+two commands are the CLI's only network use besides the optional agent
+behind `init`; everything else stays offline, and the file format itself
+carries no registry fields.
+
 ## Install
 
 Requires [Rakudo](https://rakudo.org) (Raku) and, for `log`/`diff`, Git.

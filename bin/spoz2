@@ -4,6 +4,7 @@
 use lib $*PROGRAM.resolve.parent(2).add('lib').Str;   # run from a checkout without installing
 use SPOZ2;
 use SPOZ2::Document;
+use SPOZ2::Register;
 
 my %*SUB-MAIN-OPTS = :named-anywhere;
 
@@ -23,6 +24,13 @@ sub USAGE() {
                                            (gist needs --replace once set)
       spoz2 log [FILE]                   Git history of the SPOZ2
       spoz2 diff [FILE] [REV [REV]]      Git diff of the SPOZ2
+      spoz2 register [--url=U|--token=T] connect this SPOZ2 to the SPOZ2 register
+                                           so it is discoverable (sign up first:
+                                           register.spoz2.do); no options shows
+                                           the connection status or the steps
+      spoz2 report [--dry-run|--strict]  submit evidence (presence, digest,
+                                           counts, check outcome - never the
+                                           text); advisory: exit 0 unless --strict
 
     FILE is an explicit .spoz2 document; otherwise the nearest SPOZ2 in this
     directory or its parents is used.
@@ -113,6 +121,74 @@ multi MAIN('diff', *@args) {
         print $out;
         note $err.trim if $err.trim ne '';
         $rc;
+    }
+}
+
+multi MAIN('register', Str :$url, Str :$token, Str :$file) {
+    attempt {
+        my $path = resolve-target($file);
+        my $name = display-name($path);
+        with $url {
+            my $f = save-register-url($path, $url);
+            say "Register URL saved to {display-name($f)}";
+        }
+        with $token {
+            my $u = register-url($path)
+                // user-error("save the reports URL first: spoz2 register --url=<reports URL>");
+            save-token($u, $token);
+            say "Token saved to {token-store()} - outside the repository; do not commit it.";
+        }
+        if !$url.defined && !$token.defined {
+            with register-url($path) -> $u {
+                say "$name reports to $u";
+                say token-for($u).defined
+                    ?? "A reporting token is available. Submit evidence with: spoz2 report"
+                    !! "No reporting token yet. Mint one on the project's Connect CI page, then:\n  spoz2 register --token=<token>";
+            }
+            else {
+                print qq:to/END/;
+                $name is not connected to a register yet.
+
+                To make it discoverable on the SPOZ2 register:
+                  1. Sign up first (email passcode): {REGISTER-START}
+                  2. Create a project there and mint a reporting token (shown once)
+                  3. Connect this SPOZ2:
+                       spoz2 register --url=<the project's reports URL>
+                       spoz2 register --token=<the token>
+                  4. Submit evidence: spoz2 report
+
+                A report carries presence, digest, counts and check outcomes -
+                never the text of your SPOZ2. Only register and report talk to
+                the network; every other spoz2 command stays offline.
+                END
+            }
+        }
+        0;
+    }
+}
+
+multi MAIN('report', Str :$file, Str :$release, Str :$run-id,
+           Bool :$dry-run = False, Bool :$strict = False) {
+    attempt {
+        my $path   = resolve-target($file);
+        my %report = collect-report($path, :$release, :$run-id);
+        my $body   = json-encode(%report);
+        if $dry-run { say $body; return 0 }
+
+        my $url = register-url($path)
+            // user-error("not connected to a register; run 'spoz2 register' for the steps");
+        my $token = token-for($url)
+            // user-error("no reporting token; run 'spoz2 register' for the steps");
+
+        my ($code, $reply) = submit-report($url, $token, $body);
+        if 200 <= $code < 300 {
+            say "submitted {%report<report_id>} ({display-name($path)} at {%report<revision>.substr(0, 12)})";
+            return 0;
+        }
+        note $code == 0
+            ?? "register unreachable: $reply"
+            !! "register answered $code: {$reply.substr(0, 300)}";
+        $strict ?? 1 !! 0;   # advisory by design: never blocks a pipeline
     }
 }
 
