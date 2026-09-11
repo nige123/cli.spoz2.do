@@ -77,8 +77,9 @@ is show-text($path), $path.slurp, 'show whole document';
 # discovery
 my $nested = $dir.add('src/foo/bar');
 $nested.mkdir;
-is find-root($nested), $path, 'upward lookup from nested directory';
-is resolve-target(Str, :cwd($nested)), $path, 'resolve-target uses nearest SPOZ2';
+# resolved on both sides: macOS temp dirs sit behind a /var -> /private/var symlink
+is find-root($nested).resolve.Str, $path.resolve.Str, 'upward lookup from nested directory';
+is resolve-target(Str, :cwd($nested)).resolve.Str, $path.resolve.Str, 'resolve-target uses nearest SPOZ2';
 my $lonely = temp-dir;
 throws-like { resolve-target(Str, :cwd($lonely)) }, X::SPOZ2,
     message => /'No SPOZ2 found' .* "spoz2 init"/, 'no SPOZ2 gives actionable error';

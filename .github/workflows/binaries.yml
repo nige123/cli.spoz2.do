@@ -2,6 +2,9 @@
 # Standalone spoz2 binaries, built with Raku++ (https://github.com/ash/rakupp).
 # Raku++ does not cross-compile, so each system builds its own file. Nothing
 # is published here: the files are kept as build artifacts.
+# --aot, not --bundle: Raku++ 3.26's bundle stub declares the module blob length
+# as `unsigned long`, which is 32-bit on Windows, so MSVC cannot link it and a
+# MinGW build registers no modules. --aot parses at build time and avoids it.
 name: binaries
 on:
   workflow_dispatch:
@@ -50,22 +53,29 @@ jobs:
       - name: compile spoz2 into one file
         run: |
           mkdir -p dist
-          "$RAKUPP" -I lib --bundle --standalone bin/spoz2 -o "dist/${{ matrix.exe }}"
+          "$RAKUPP" -I lib --aot --standalone bin/spoz2 -o "dist/${{ matrix.exe }}"
           ls -l dist
           "$RAKUPP" --exe-info "dist/${{ matrix.exe }}"
 
       - name: what the file depends on
         run: |
           case "$RUNNER_OS" in
-            macOS) otool -L "dist/${{ matrix.exe }}" ;;
-            *)     ldd "dist/${{ matrix.exe }}" || true ;;
+            macOS)   otool -L "dist/${{ matrix.exe }}" ;;
+            Windows) (objdump -p "dist/${{ matrix.exe }}" 2>/dev/null | grep 'DLL Name') || ldd "dist/${{ matrix.exe }}" || true ;;
+            *)       ldd "dist/${{ matrix.exe }}" || true ;;
           esac
 
-      - name: the file runs alone, away from Raku++ and the source
+      - name: the file runs alone, away from Raku++, the source and any toolchain
         run: |
           probe=$(mktemp -d)
           cp "dist/${{ matrix.exe }}" "$probe/"
-          cd "$probe" && env -u RAKUPP_HOME "./${{ matrix.exe }}" version
+          # only the system's own directories on PATH, so a DLL or shared
+          # library borrowed from the runner's toolchains shows up as a failure
+          case "$RUNNER_OS" in
+            Windows) sysp="/c/Windows/System32:/c/Windows" ;;
+            *)       sysp="/usr/bin:/bin" ;;
+          esac
+          cd "$probe" && env -u RAKUPP_HOME PATH="$sysp" "./${{ matrix.exe }}" version
 
       - name: smoke test
         run: |
@@ -98,6 +108,7 @@ jobs:
   linux-floor:
     name: does the Linux file run on Ubuntu 22.04 (glibc 2.35)?
     needs: build
+    if: always()
     runs-on: ubuntu-22.04
     continue-on-error: true
     steps:

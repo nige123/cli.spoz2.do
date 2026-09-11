@@ -240,6 +240,11 @@ decisions:
       unpack into scalars; and a <{...}> regex interpolation in one test became
       starts-with. SPOZ2_TEST_BIN points the suite at a compiled binary, so CI
       tests the executable it ships.
+    - 2026-09-11: CI compiles spoz2 with Raku++ --aot, not --bundle. Raku++
+      3.26's bundle stub declares the module length as unsigned long, which is
+      32-bit on Windows, so MSVC cannot link it and a MinGW build carries no
+      modules. --aot parses at build time, avoids the stub, and passes the whole
+      suite on Linux.
 
 direction:
     - Make a SPOZ2 directly useful to AI coding tools that simply read it;

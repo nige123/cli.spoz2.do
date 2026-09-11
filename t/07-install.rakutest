@@ -13,8 +13,14 @@ like $out, /^ 'spoz2 ' \d+ '.' \d+ '.' \d+ /, 'prints the tool version';
 like $out, /'SPOZ2 format ' \d+ '.' \d+/, 'names the format version';
 
 # the installer, run against this checkout, into an isolated prefix;
-# raku is already present here, so no runtime is ever fetched
-if have-git() {
+# raku is already present here, so no runtime is ever fetched. The installer
+# installs the Raku source, so it needs a Rakudo runtime: a CI runner testing
+# only a compiled spoz2 may have none, and then this part is skipped.
+sub have-raku(--> Bool) {
+    my $p = try run 'sh', '-c', 'command -v raku || test -x "$HOME/.rakubrew/shims/raku"', :out, :err;
+    $p.defined && $p.exitcode == 0;
+}
+if have-git() && have-raku() {
     my $fake = temp-dir;
     my %env = %*ENV;
     %env<SPOZ2_REPO>       = $repo-root.Str;
@@ -51,5 +57,5 @@ if have-git() {
     is $pointee.slurp, "do not clobber\n", 'the symlink target was not written through';
 }
 else {
-    skip 'no git available', 5;
+    skip 'needs git and a Rakudo runtime', 7;
 }
