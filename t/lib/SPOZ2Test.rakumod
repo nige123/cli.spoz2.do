@@ -22,8 +22,12 @@ sub rm-rf(IO::Path $path) is export {
 #| Run bin/spoz2 in $cwd; returns (exit-code, stdout, stderr).
 sub spoz2(IO::Path $cwd, *@args) is export {
     my $root = $?FILE.IO.resolve.parent(3);
-    my $proc = run $*EXECUTABLE, '-I', $root.add('lib').Str,
-        $root.add('bin/spoz2').Str, |@args, :cwd($cwd.Str), :out, :err;
+    # SPOZ2_TEST_BIN points the suite at a compiled spoz2 (a Raku++ binary),
+    # so CI tests the executable it ships, not the source it came from.
+    my @cmd = %*ENV<SPOZ2_TEST_BIN>
+        ?? (%*ENV<SPOZ2_TEST_BIN>,)
+        !! ($*EXECUTABLE, '-I', $root.add('lib').Str, $root.add('bin/spoz2').Str);
+    my $proc = run |@cmd, |@args, :cwd($cwd.Str), :out, :err;
     my $out = $proc.out.slurp(:close);
     my $err = $proc.err.slurp(:close);
     $proc.exitcode, $out, $err;

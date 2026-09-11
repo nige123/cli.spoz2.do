@@ -173,7 +173,8 @@ sub install-agent-section(IO::Path $target, IO::Path :$root! --> Str) is export 
     }
     my $text  = $target.slurp;
     my @lines = $text.lines;
-    my (@s, @e) := marker-lines(@lines);
+    my ($s, $e) = marker-lines(@lines);   # scalars, not (@s, @e) := : Raku++ 3.26 flattens that binding
+    my @s = @$s; my @e = @$e;
     if !@s && !@e {
         my $sep = $text eq '' ?? '' !! ($text.ends-with("\n") ?? "\n" !! "\n\n");
         $target.spurt($text ~ $sep ~ $block ~ "\n");
@@ -193,7 +194,8 @@ sub install-agent-section(IO::Path $target, IO::Path :$root! --> Str) is export 
 sub section-status(IO::Path $target --> Str) is export {
     return 'no file' unless $target.e;
     my @lines = $target.slurp.lines;
-    my (@s, @e) := marker-lines(@lines);
+    my ($s, $e) = marker-lines(@lines);   # scalars, not (@s, @e) := : Raku++ 3.26 flattens that binding
+    my @s = @$s; my @e = @$e;
     return 'absent'    if !@s && !@e;
     return 'malformed' unless @s == 1 && @e == 1 && @s[0] < @e[0];
     @lines[@s[0] .. @e[0]].join("\n") eq managed-block() ?? 'current' !! 'stale';

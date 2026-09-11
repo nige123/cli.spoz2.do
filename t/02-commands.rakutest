@@ -12,7 +12,7 @@ my $dir = temp-dir;
 my $path = init(:$dir);
 ok $path.f, 'init creates SPOZ2';
 is $path.basename, 'SPOZ2', 'root file is named SPOZ2';
-like $path.slurp, /^ 'SPOZ2 ' <{FORMAT-VERSION}> \n/, 'file starts with the current format header';
+ok $path.slurp.starts-with("SPOZ2 {FORMAT-VERSION}\n"), 'file starts with the current format header';
 throws-like { init(:$dir) }, X::SPOZ2, message => /'already exists'/, 'init refuses to overwrite';
 nok check-doc($path).ok, 'freshly initialised SPOZ2 does not pass check (placeholder gist)';
 is check-doc($path).section('invariants').items[0].text, INVARIANT-ZERO,
