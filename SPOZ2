@@ -62,6 +62,11 @@ behaviours:
       nothing system-wide), links spoz2 onto the PATH and verifies it runs.
       Nobody needs to know or care what language the tool is written in to
       install it.
+    - CI builds spoz2 as one standalone file for Linux x86_64, macOS (universal)
+      and Windows x64 with a pinned, checksum-verified Raku++ release, proves
+      each file runs alone, smoke-tests it, runs the full suite against it on
+      Linux and macOS, and keeps the files as build artifacts. Nothing is
+      published by that workflow; distribution is a separate decision.
 
 invariants:
     - Invariant 0.0: humans first. This software exists to help humans

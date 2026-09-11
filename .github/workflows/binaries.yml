@@ -1,0 +1,107 @@
+# Copyright Nige Ltd. Author: Nigel Hamilton.
+# Standalone spoz2 binaries, built with Raku++ (https://github.com/ash/rakupp).
+# Raku++ does not cross-compile, so each system builds its own file. Nothing
+# is published here: the files are kept as build artifacts.
+name: binaries
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+env:
+  RAKUPP_VERSION: v3.26.0
+jobs:
+  build:
+    name: build ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04,   target: linux-x86_64,      archive: rakupp-linux-x86_64.tar.gz,    exe: spoz2 }
+          - { os: macos-latest,   target: macos-universal,   archive: rakupp-macos-universal.tar.gz, exe: spoz2 }
+          - { os: windows-latest, target: windows-x64,       archive: rakupp-windows-x64.zip,        exe: spoz2.exe }
+          - { os: windows-latest, target: windows-x64-mingw, archive: rakupp-windows-x64-mingw.zip,  exe: spoz2.exe }
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: fetch Raku++ and verify its checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$RAKUPP_VERSION" -R ash/rakupp -D dl \
+              -p "${{ matrix.archive }}" -p "${{ matrix.archive }}.sha256"
+          # the Windows checksum files are uppercase hex with CRLF endings
+          exp=$(tr -d '\r\n ' < "dl/${{ matrix.archive }}.sha256" | grep -o -i '^[0-9a-f]\{64\}' | tr 'A-F' 'a-f')
+          got=$( (sha256sum "dl/${{ matrix.archive }}" 2>/dev/null || shasum -a 256 "dl/${{ matrix.archive }}") | awk '{print $1}')
+          [ -n "$exp" ] && [ "$exp" = "$got" ] || { echo "checksum mismatch: expected $exp, got $got"; exit 1; }
+          mkdir -p tool
+          case "${{ matrix.archive }}" in
+            *.zip) if command -v unzip >/dev/null; then unzip -q "dl/${{ matrix.archive }}" -d tool; else 7z x -y -otool "dl/${{ matrix.archive }}" >/dev/null; fi ;;
+            *)     tar xzf "dl/${{ matrix.archive }}" -C tool ;;
+          esac
+          RAKUPP=$(find "$PWD/tool" -type f \( -name rakupp -o -name rakupp.exe \) -path '*/bin/*' | head -1)
+          [ -n "$RAKUPP" ] || { echo "rakupp not found in the archive"; find tool -maxdepth 3; exit 1; }
+          echo "RAKUPP=$RAKUPP" >> "$GITHUB_ENV"
+          "$RAKUPP" -e 'say "Raku++ ", $*RAKU.compiler.version'
+
+      - name: compile spoz2 into one file
+        run: |
+          mkdir -p dist
+          "$RAKUPP" -I lib --bundle --standalone bin/spoz2 -o "dist/${{ matrix.exe }}"
+          ls -l dist
+          "$RAKUPP" --exe-info "dist/${{ matrix.exe }}"
+
+      - name: what the file depends on
+        run: |
+          case "$RUNNER_OS" in
+            macOS) otool -L "dist/${{ matrix.exe }}" ;;
+            *)     ldd "dist/${{ matrix.exe }}" || true ;;
+          esac
+
+      - name: the file runs alone, away from Raku++ and the source
+        run: |
+          probe=$(mktemp -d)
+          cp "dist/${{ matrix.exe }}" "$probe/"
+          cd "$probe" && env -u RAKUPP_HOME "./${{ matrix.exe }}" version
+
+      - name: smoke test
+        run: |
+          bin="$PWD/dist/${{ matrix.exe }}"
+          repo=$(mktemp -d) && cd "$repo"
+          git init -q && git config user.name CI && git config user.email ci@example.com
+          "$bin" init --/agent --/agents
+          "$bin" add gist --replace 'A CI smoke-test project.'
+          "$bin" check
+          git add -A && git commit -qm smoke
+          "$bin" report --dry-run | grep -q '"outcome":"passed"'
+          "$bin" agent install
+          "$bin" agent install | grep -qi unchanged
+
+      - name: full test suite against the file
+        if: runner.os != 'Windows'
+        run: SPOZ2_TEST_BIN="$PWD/dist/${{ matrix.exe }}" prove --ext .rakutest -e "$RAKUPP -Ilib" t/
+
+      - name: checksum
+        run: |
+          cd dist
+          (sha256sum "${{ matrix.exe }}" 2>/dev/null || shasum -a 256 "${{ matrix.exe }}") > "${{ matrix.exe }}.sha256"
+          cat "${{ matrix.exe }}.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: spoz2-${{ matrix.target }}
+          path: dist/
+
+  linux-floor:
+    name: does the Linux file run on Ubuntu 22.04 (glibc 2.35)?
+    needs: build
+    runs-on: ubuntu-22.04
+    continue-on-error: true
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: spoz2-linux-x86_64
+      - run: chmod +x spoz2 && ./spoz2 version
