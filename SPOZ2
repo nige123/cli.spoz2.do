@@ -252,6 +252,11 @@ decisions:
       holding arm64 and x86_64. Windows uses the MSVC build, which needs only
       system DLLs; a MinGW build is linked fully static or it needs MinGW DLLs
       beside it.
+    - 2026-09-11: Windows binaries come from the Raku++ MSVC archive only; its
+      file needs only system DLLs. A MinGW file needs MinGW DLLs beside it, and
+      linked with -static it crashes at start (Raku++ 3.26). macOS files declare
+      macOS 11 as their minimum, matching the Raku++ runtime; left to the
+      default they would require the runner's own macOS.
 
 direction:
     - Make a SPOZ2 directly useful to AI coding tools that simply read it;

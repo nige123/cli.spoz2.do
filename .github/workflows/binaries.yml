@@ -21,12 +21,13 @@ jobs:
         include:
           # cxx: the compiler Raku++ drives, with link flags (it runs CXX through a
           # shell). Linux: static libstdc++, so glibc is the only dependency.
-          # macOS: both architectures in one file (the Raku++ runtime is universal).
-          # MinGW: fully static, so no MinGW DLLs are needed beside the file.
+          # macOS: both architectures in one file (the Raku++ runtime is universal),
+          # and macOS 11 as the minimum, as the runtime itself was built for.
+          # Windows: the MSVC archive, whose file needs only system DLLs. (MinGW:
+          # a dynamic file needs MinGW DLLs, and a -static one crashes at start.)
           - { os: ubuntu-24.04,   target: linux-x86_64,      archive: rakupp-linux-x86_64.tar.gz,    exe: spoz2,     cxx: 'c++ -static-libstdc++ -static-libgcc' }
-          - { os: macos-latest,   target: macos-universal,   archive: rakupp-macos-universal.tar.gz, exe: spoz2,     cxx: 'c++ -arch arm64 -arch x86_64' }
+          - { os: macos-latest,   target: macos-universal,   archive: rakupp-macos-universal.tar.gz, exe: spoz2,     cxx: 'c++ -arch arm64 -arch x86_64 -mmacosx-version-min=11.0' }
           - { os: windows-latest, target: windows-x64,       archive: rakupp-windows-x64.zip,        exe: spoz2.exe, cxx: '' }
-          - { os: windows-latest, target: windows-x64-mingw, archive: rakupp-windows-x64-mingw.zip,  exe: spoz2.exe, cxx: 'g++ -static' }
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -69,7 +70,9 @@ jobs:
                      lipo -info "$f"
                      lipo "$f" -verify_arch arm64 x86_64
                      otool -L "$f"
-                     otool -arch all -l "$f" | grep -E 'architecture|minos' ;;
+                     m=$(otool -arch all -l "$f" | awk '/minos/ {print $2}' | sort -u)
+                     echo "minimum macOS: $m"
+                     [ "$m" = 11.0 ] || { echo "expected a minimum of macOS 11.0"; exit 1; } ;;
             Windows) (objdump -p "dist/${{ matrix.exe }}" 2>/dev/null | grep 'DLL Name') || ldd "dist/${{ matrix.exe }}" || true ;;
             *)       ldd "dist/${{ matrix.exe }}" || true ;;
           esac
@@ -134,7 +137,14 @@ jobs:
       - name: run it in bare containers (no toolchain, nothing installed)
         run: |
           chmod +x spoz2
-          try() { docker run --rm -v "$PWD:/w:ro" "$1" /w/spoz2 version 2>&1 | head -1 | cut -c1-140 | tr '|' '/'; return "${PIPESTATUS[0]}"; }
+          # pull first, so docker's own progress lines never reach the result
+          try() {
+            docker pull -q "$1" >/dev/null || { echo "could not pull $1"; return 2; }
+            local out rc
+            out=$(docker run --rm -v "$PWD:/w:ro" "$1" /w/spoz2 version 2>&1) && rc=0 || rc=$?
+            printf '%s\n' "$out" | head -1 | cut -c1-140 | tr '|' '/'
+            return $rc
+          }
           { echo '| image | result |'; echo '|---|---|'; } >> "$GITHUB_STEP_SUMMARY"
           bad=0
           # must run: glibc 2.38 or newer
