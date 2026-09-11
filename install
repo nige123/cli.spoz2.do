@@ -48,8 +48,18 @@ if [ -z "$RAKU" ]; then
     curl -fsSL https://rakubrew.io/install-on-perl.sh | sh >/dev/null 2>&1 \
         || fail "could not set up rakubrew; install Rakudo yourself: https://rakudo.org"
     "$RAKUBREW" mode shim >/dev/null 2>&1 || true
-    "$RAKUBREW" download >/dev/null \
-        || fail "could not download the runtime; install Rakudo yourself: https://rakudo.org"
+    if ! "$RAKUBREW" download >/dev/null 2>&1; then
+        # No prebuilt runtime for this OS/architecture: build it from source.
+        ARCH="$(uname -sm 2>/dev/null || echo 'this platform')"
+        say "no prebuilt runtime for $ARCH; building it from source instead"
+        say "(one-off; needs a C compiler and make, and can take 10+ minutes) ..."
+        command -v cc >/dev/null 2>&1 || command -v gcc >/dev/null 2>&1 || command -v clang >/dev/null 2>&1 \
+            || fail "building the runtime needs a C compiler (cc, gcc or clang); install one and re-run, or install Rakudo yourself: https://rakudo.org"
+        command -v make >/dev/null 2>&1 || command -v gmake >/dev/null 2>&1 \
+            || fail "building the runtime needs make; install it and re-run, or install Rakudo yourself: https://rakudo.org"
+        "$RAKUBREW" build >/dev/null \
+            || fail "could not build the runtime on $ARCH; install Rakudo yourself: https://rakudo.org"
+    fi
     RAKU="$HOME/.rakubrew/shims/raku"
     [ -x "$RAKU" ] || fail "runtime fetched but not found at $RAKU; please report this"
 fi

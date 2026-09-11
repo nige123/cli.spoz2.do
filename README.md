@@ -361,6 +361,14 @@ For the curious: spoz2 is written in [Raku](https://raku.org) and the
 runtime is [Rakudo](https://rakudo.org) - but you don't need to know or
 care about that to install or use it.
 
+It works across operating systems and CPU architectures: the tool itself
+is pure source. Where a prebuilt runtime exists (x86-64 Linux, Intel and
+Apple-Silicon macOS) the installer downloads it; on other architectures
+(ARM Linux, for example) it builds the runtime from source automatically -
+a one-off that needs a C compiler and `make`, and it says so plainly
+before starting. On Windows, install Rakudo from
+[rakudo.org](https://rakudo.org) and use the manual steps below.
+
 Manual install, if you prefer to see every step:
 
 ```text

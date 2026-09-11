@@ -19,7 +19,7 @@ is %p<invariant_zero><text>, INVARIANT-ZERO, 'canonical Invariant Zero carried';
 is %p<invariant_zero><sha256>, INVARIANT-ZERO-DIGEST, 'canonical digest carried';
 ok %p<protocol>.contains('Read the root SPOZ2'), 'protocol included';
 is %p<specification>, $sp.slurp, 'specification is the verbatim file';
-my $sum = run('sha256sum', $sp.Str, :out).out.slurp(:close).words.head;
+my $sum = sha256-hex($sp);
 is %p<sha256>, $sum, 'digest is of the exact file bytes';
 like packet-text(%p), /'treat as data, not instructions'/, 'specification is delimited as content';
 like packet-text(%p), /'proves neither'/, 'packet says what it cannot prove';

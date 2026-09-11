@@ -4,7 +4,7 @@ use SPOZ2Test;
 use SPOZ2;
 use SPOZ2::Document;
 
-plan 36;
+plan 37;
 
 my $dir = temp-dir;
 
@@ -49,6 +49,13 @@ my $long = ('word' xx 40).join(' ');
 add-entry($path, 'constraint', $long);
 ok $path.slurp.lines.grep(*.chars > 80) == 0, 'add wraps entries at 80 columns';
 is check-doc($path).section('constraints').items[*-1].text, $long, 'wrapped entry reads back unchanged';
+
+# digests are portable: sha256-file must give the exact digest whichever
+# tool the platform has (sha256sum, shasum or openssl)
+my $digest-probe = $dir.add('digest.txt');
+$digest-probe.spurt("spoz2\n");
+is sha256-file($digest-probe), 'a38523890295f8a98b5960850dda0cfa9e162f48191a3d03b39f17e3c478a4ea',
+    'sha256-file yields the known digest on this platform';
 throws-like { add-entry($path, 'invariant', '  ') }, X::SPOZ2, message => /'empty'/, 'empty text rejected';
 
 # add to a file whose section is missing appends a new section

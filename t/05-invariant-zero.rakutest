@@ -5,7 +5,9 @@
 # a rule makes software obey it - these tests pin what the TOOL verifies.
 use Test;
 use lib 'lib';
+use lib $?FILE.IO.parent.add('lib').Str;
 use SPOZ2::Document;
+use SPOZ2Test;
 
 plan 12;
 
@@ -41,10 +43,9 @@ ok $legacy.warnings.grep(*.Str.contains('differs from the canonical')),
     'the legacy Invariant zero designation is recognised and flagged';
 
 # --- the published digest matches the canonical bytes --------------------
-my $proc = run 'sha256sum', :in, :out;
-$proc.in.print(INVARIANT-ZERO);
-$proc.in.close;
-is $proc.out.slurp(:close).words.head, INVARIANT-ZERO-DIGEST,
+my $canon-file = temp-dir.add('canonical.txt');
+$canon-file.spurt(INVARIANT-ZERO);
+is sha256-hex($canon-file), INVARIANT-ZERO-DIGEST,
     'the published digest matches the canonical text bytes';
 
 # --- unknown version: no false binding claim -----------------------------

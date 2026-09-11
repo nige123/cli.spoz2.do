@@ -107,8 +107,25 @@ constraints:
       and humans can edit by hand.
     - Unknown sections must be preserved and reported as warnings, not errors,
       so the format can evolve without breaking older files.
+    - The CLI must work across operating systems and CPU architectures: the
+      tool is pure source, the installer obtains a runtime per platform
+      (prebuilt where one exists, built from source with plain warnings
+      otherwise), and external tools are reached through portable fallbacks
+      (sha256sum, shasum or openssl for digests) - never GNU-only or
+      x86-only assumptions.
 
 decisions:
+    - 2026-09-11: The CLI works across architectures (user ruling). The code
+      needed nothing - Raku is architecture-independent - so the work is at
+      the edges: the installer falls back from a prebuilt runtime download
+      to 'rakubrew build' with honest compiler-and-make prerequisites and a
+      named platform, and file digests fall back sha256sum -> shasum ->
+      openssl so macOS and the BSDs work without GNU coreutils. Linux and
+      macOS are covered by the installer on any architecture rakubrew can
+      download or build for; Windows is documented as manual (rakudo.org
+      plus the clone-and-symlink steps). Verified on this x86-64 Linux box
+      only; other platforms are covered by design and the known-digest
+      test, not yet by execution.
     - 2026-09-10: init does a lot automatically by default (user ruling:
       don't make me think - no command-line options to look up). One command
       drafts the spec and installs the agent entry points it detects, safe

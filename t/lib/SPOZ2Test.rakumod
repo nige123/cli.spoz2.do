@@ -29,6 +29,21 @@ sub spoz2(IO::Path $cwd, *@args) is export {
     $proc.exitcode, $out, $err;
 }
 
+#| An independent system digest for cross-checking sha256-file, using
+#| whichever tool this platform has.
+sub sha256-hex(IO::Path $f --> Str) is export {
+    for ('sha256sum',), ('shasum', '-a', '256'), ('openssl', 'dgst', '-sha256', '-r') -> @tool {
+        my $hex = try {
+            my $p = run |@tool.map(*.Str), $f.Str, :out, :err;
+            my $o = $p.out.slurp(:close);
+            $p.err.slurp(:close);
+            $p.exitcode == 0 ?? $o.words.head.Str !! Str;
+        };
+        return $hex.lc if $hex.defined && $hex.chars == 64;
+    }
+    Str;
+}
+
 #| Can we run git here?  (Tests that need it skip otherwise.)
 sub have-git(--> Bool) is export {
     my $p = try run 'git', '--version', :out, :err;

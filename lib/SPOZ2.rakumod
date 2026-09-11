@@ -13,12 +13,20 @@ sub user-error(Str $message) { X::SPOZ2.new(:$message).throw }
 
 constant ROOT-NAME is export = 'SPOZ2';
 
-#| sha256 of a file's exact bytes, via the sha256sum tool (external, like Git).
+#| sha256 of a file's exact bytes, via whichever digest tool this system
+#| has - sha256sum (Linux), shasum (macOS/BSD) or openssl - external,
+#| like Git, so the CLI works across operating systems and architectures.
 sub sha256-file(IO::Path $f --> Str) is export {
-    my $p = try run 'sha256sum', $f.Str, :out, :err;
-    user-error('sha256sum is required to fingerprint the SPOZ2 and was not found')
-        unless $p.defined && $p.exitcode == 0;
-    $p.out.slurp(:close).words.head.Str;
+    for ('sha256sum',), ('shasum', '-a', '256'), ('openssl', 'dgst', '-sha256', '-r') -> @tool {
+        my $hex = try {
+            my $p = run |@tool.map(*.Str), $f.Str, :out, :err;
+            my $o = $p.out.slurp(:close);
+            $p.err.slurp(:close);
+            $p.exitcode == 0 ?? $o.words.head !! Nil;
+        };
+        return $hex.lc if $hex.defined && $hex ~~ /^ <[0..9 A..F a..f]> ** 64 $/;
+    }
+    user-error('no sha256 tool found (need sha256sum, shasum or openssl)');
 }
 
 # ---------------------------------------------------------------- discovery
