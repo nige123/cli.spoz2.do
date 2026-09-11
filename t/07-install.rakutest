@@ -2,7 +2,7 @@ use lib $?FILE.IO.parent.add('lib').Str;
 use Test;
 use SPOZ2Test;
 
-plan 8;
+plan 10;
 
 my $repo-root = $?FILE.IO.parent.parent.resolve;
 
@@ -37,6 +37,18 @@ if have-git() {
     $p2.out.slurp(:close);
     $p2.err.slurp(:close);
     is $p2.exitcode, 0, 're-running the installer updates cleanly';
+
+    # an existing symlink at the launcher path is replaced, never written
+    # through (writing through would clobber the file it points at)
+    my $pointee = $fake.add('pointee');
+    $pointee.spurt("do not clobber\n");
+    $launcher.unlink;
+    run 'ln', '-s', $pointee.Str, $launcher.Str;
+    my $p3 = run 'sh', $repo-root.add('install').Str, :out, :err, :env(%env);
+    $p3.out.slurp(:close);
+    $p3.err.slurp(:close);
+    ok !$launcher.l && $launcher.f, 'symlink replaced by a real launcher';
+    is $pointee.slurp, "do not clobber\n", 'the symlink target was not written through';
 }
 else {
     skip 'no git available', 5;

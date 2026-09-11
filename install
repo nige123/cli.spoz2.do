@@ -56,6 +56,7 @@ fi
 
 # -- the command --------------------------------------------------------------
 mkdir -p "$BIN_DIR"
+rm -f "$BIN_DIR/spoz2"    # replace, never write through an existing symlink
 cat > "$BIN_DIR/spoz2" <<LAUNCH
 #!/bin/sh
 # spoz2 launcher, written by the spoz2 installer; re-run the installer to update.
