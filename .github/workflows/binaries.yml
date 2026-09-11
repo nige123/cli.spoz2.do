@@ -19,16 +19,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: ubuntu-24.04,   target: linux-x86_64,      archive: rakupp-linux-x86_64.tar.gz,    exe: spoz2 }
-          - { os: macos-latest,   target: macos-universal,   archive: rakupp-macos-universal.tar.gz, exe: spoz2 }
-          - { os: windows-latest, target: windows-x64,       archive: rakupp-windows-x64.zip,        exe: spoz2.exe }
-          - { os: windows-latest, target: windows-x64-mingw, archive: rakupp-windows-x64-mingw.zip,  exe: spoz2.exe }
+          # cxx: the compiler Raku++ drives, with link flags (it runs CXX through a
+          # shell). Linux: static libstdc++, so glibc is the only dependency.
+          # macOS: both architectures in one file (the Raku++ runtime is universal).
+          # MinGW: fully static, so no MinGW DLLs are needed beside the file.
+          - { os: ubuntu-24.04,   target: linux-x86_64,      archive: rakupp-linux-x86_64.tar.gz,    exe: spoz2,     cxx: 'c++ -static-libstdc++ -static-libgcc' }
+          - { os: macos-latest,   target: macos-universal,   archive: rakupp-macos-universal.tar.gz, exe: spoz2,     cxx: 'c++ -arch arm64 -arch x86_64' }
+          - { os: windows-latest, target: windows-x64,       archive: rakupp-windows-x64.zip,        exe: spoz2.exe, cxx: '' }
+          - { os: windows-latest, target: windows-x64-mingw, archive: rakupp-windows-x64-mingw.zip,  exe: spoz2.exe, cxx: 'g++ -static' }
     runs-on: ${{ matrix.os }}
     defaults:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: fetch Raku++ and verify its checksum
         env:
@@ -53,6 +57,7 @@ jobs:
       - name: compile spoz2 into one file
         run: |
           mkdir -p dist
+          if [ -n "${{ matrix.cxx }}" ]; then export CXX="${{ matrix.cxx }}"; fi
           "$RAKUPP" -I lib --aot --standalone bin/spoz2 -o "dist/${{ matrix.exe }}"
           ls -l dist
           "$RAKUPP" --exe-info "dist/${{ matrix.exe }}"
@@ -60,7 +65,11 @@ jobs:
       - name: what the file depends on
         run: |
           case "$RUNNER_OS" in
-            macOS)   otool -L "dist/${{ matrix.exe }}" ;;
+            macOS)   f="dist/${{ matrix.exe }}"
+                     lipo -info "$f"
+                     lipo "$f" -verify_arch arm64 x86_64
+                     otool -L "$f"
+                     otool -arch all -l "$f" | grep -E 'architecture|minos' ;;
             Windows) (objdump -p "dist/${{ matrix.exe }}" 2>/dev/null | grep 'DLL Name') || ldd "dist/${{ matrix.exe }}" || true ;;
             *)       ldd "dist/${{ matrix.exe }}" || true ;;
           esac
@@ -76,6 +85,14 @@ jobs:
             *)       sysp="/usr/bin:/bin" ;;
           esac
           cd "$probe" && env -u RAKUPP_HOME PATH="$sysp" "./${{ matrix.exe }}" version
+          # the Intel slice of the macOS file, where the runner has Rosetta
+          if [ "$RUNNER_OS" = macOS ]; then
+            if arch -x86_64 /usr/bin/true 2>/dev/null; then
+              arch -x86_64 env -u RAKUPP_HOME PATH="$sysp" "./${{ matrix.exe }}" version
+            else
+              echo "no Rosetta on this runner: the x86_64 slice was built and verified, not run"
+            fi
+          fi
 
       - name: smoke test
         run: |
@@ -100,19 +117,35 @@ jobs:
           (sha256sum "${{ matrix.exe }}" 2>/dev/null || shasum -a 256 "${{ matrix.exe }}") > "${{ matrix.exe }}.sha256"
           cat "${{ matrix.exe }}.sha256"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: spoz2-${{ matrix.target }}
           path: dist/
 
-  linux-floor:
-    name: does the Linux file run on Ubuntu 22.04 (glibc 2.35)?
+  linux-portability:
+    name: which Linux systems run the Linux file
     needs: build
     if: always()
-    runs-on: ubuntu-22.04
-    continue-on-error: true
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: spoz2-linux-x86_64
-      - run: chmod +x spoz2 && ./spoz2 version
+      - name: run it in bare containers (no toolchain, nothing installed)
+        run: |
+          chmod +x spoz2
+          try() { docker run --rm -v "$PWD:/w:ro" "$1" /w/spoz2 version 2>&1 | head -1 | cut -c1-140 | tr '|' '/'; return "${PIPESTATUS[0]}"; }
+          { echo '| image | result |'; echo '|---|---|'; } >> "$GITHUB_STEP_SUMMARY"
+          bad=0
+          # must run: glibc 2.38 or newer
+          for img in ubuntu:24.04 debian:trixie-slim fedora:41; do
+            if out=$(try "$img"); then r="runs: $out"; else r="FAILS: $out"; bad=1; fi
+            echo "| $img | $r |" | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+          # expected not to run: glibc older than 2.38, the floor set by the
+          # Raku++ 3.26 Linux runtime (it calls glibc 2.38's __isoc23_* functions)
+          for img in ubuntu:22.04 debian:bookworm-slim; do
+            if out=$(try "$img"); then r="runs, so the floor is lower than recorded: $out"; else r="does not run, as expected: $out"; fi
+            echo "| $img | $r |" | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+          exit $bad

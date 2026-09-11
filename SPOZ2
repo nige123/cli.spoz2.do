@@ -245,6 +245,13 @@ decisions:
       32-bit on Windows, so MSVC cannot link it and a MinGW build carries no
       modules. --aot parses at build time, avoids the stub, and passes the whole
       suite on Linux.
+    - 2026-09-11: How each binary links. Linux links libstdc++ statically, so
+      glibc is its only dependency; its floor is glibc 2.38 (Ubuntu 24.04,
+      Debian 13, Fedora 39 or newer), set by the Raku++ 3.26 Linux runtime
+      itself, so building on an older system cannot lower it. macOS is one file
+      holding arm64 and x86_64. Windows uses the MSVC build, which needs only
+      system DLLs; a MinGW build is linked fully static or it needs MinGW DLLs
+      beside it.
 
 direction:
     - Make a SPOZ2 directly useful to AI coding tools that simply read it;
