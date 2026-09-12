@@ -8,6 +8,7 @@ use SPOZ2::Register;
 use SPOZ2::Agent;
 
 my %*SUB-MAIN-OPTS = :named-anywhere;
+$*OUT.out-buffer = False;   # a closed pipe fails at the write, leaving nothing to flush at exit
 
 sub USAGE() {
     print q:to/END/;
@@ -65,6 +66,8 @@ sub attempt(&body) {
     exit $rc;
     CATCH {
         when X::SPOZ2 { note .message; exit 1 }
+        # A closed pipe (spoz2 ... | head) is normal, never a stack trace.
+        when *.message.contains('Broken pipe') { try $*OUT.close; exit 0 }
     }
 }
 
