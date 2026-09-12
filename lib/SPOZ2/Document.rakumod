@@ -19,19 +19,17 @@ constant GIST-PLACEHOLDER is export = '<What is this thing supposed to do?>';
 #| `check` verifies the binding and any locally repeated text.  The
 #| digest identifies the adopted text, nothing more: stating a rule, or
 #| hashing it, does not make software obey it.
-constant INVARIANT-ZERO is export = 'Invariant 0: humans first. '
-    ~ 'This software exists to help humans thrive and respect each '
-    ~ "person's dignity. It must not cause or assist harm to people; no "
-    ~ 'claimed greater good makes a person disposable. It must preserve '
-    ~ 'meaningful human oversight: people can understand its consequential '
-    ~ 'actions, challenge its decisions, and exercise appropriate control, '
-    ~ 'including correction and safe stopping. It must honestly represent '
-    ~ 'what it is, what it knows, what it has done, and what remains '
-    ~ 'uncertain. No other entry may weaken or override this invariant.';
+constant INVARIANT-ZERO is export =
+    "Invariant 0: humans first. Help people thrive, and respect each person's "
+    ~ 'dignity. Do no harm, and no greater good makes a person disposable. Keep '
+    ~ 'humans in charge: explain consequential actions, accept challenge and '
+    ~ 'correction, and stop safely when asked. Be honest about what this is, '
+    ~ 'what it knows, what it has done, and what is uncertain. No other entry '
+    ~ 'may weaken this.';
 
 #| sha256 of the exact one-line UTF-8 canonical text, no trailing newline.
 constant INVARIANT-ZERO-DIGEST is export =
-    'df43776d2c4dc89b22f74a9658f5d6920ee498e5a32d8738ce2134ba2146dd06';
+    'b0c2482d4298e5bbbcb8de5b9da507a27668ed2fba28e46a414bafc1f4152360';
 
 #| The short teaching version, for pages and slides, never for files.
 constant INVARIANT-ZERO-SHORT is export =

@@ -142,11 +142,10 @@ whether or not your file repeats the words.
 
 > Help humans thrive. Keep humans in charge. Never fake it.
 
-Nothing in a SPOZ2 may weaken it. `spoz2 init` writes the canonical text,
-`spoz2 check` verifies the binding and any local copy, and a passing check
-never means the software is safe or its claims are true.
+Nothing in a SPOZ2 may weaken it. `spoz2 init` writes it, `spoz2 check`
+verifies the binding, and a passing check never means the software is safe.
 
-The full text, the version story and the obligations that come with it are in
+The full 62-word text and what comes with it:
 [docs/invariant-zero.md](docs/invariant-zero.md).
 
 ## Agents
