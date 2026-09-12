@@ -46,6 +46,13 @@ sub is-invariant-zero-text(Str $t --> Bool) is export {
     $t.starts-with(INVARIANT-ZERO-LEAD) || $t.starts-with(INVARIANT-ZERO-LEAD-LEGACY)
 }
 
+#| The explicit number of an invariant entry ('Invariant 3: ...' gives
+#| '3'), or Str when the entry is unnumbered.  Numbers make invariants
+#| referable; the 0.x space is reserved for the format's foundation.
+sub invariant-number(Str $t --> Str) is export {
+    $t ~~ /^ 'Invariant ' (\d+ ['.' \d+]*) ':' / ?? ~$0 !! Str;
+}
+
 #| Known top-level sections, in canonical order, with their kind.
 #| 'text' sections hold free text; 'list' sections hold "- " entries.
 constant %SECTION-KIND is export =
@@ -280,6 +287,20 @@ method !validate() {
     }
     # Omission is legitimate: the binding is inherited from the format
     # version and reported by invariant-zero-status.
+
+    # Numbered invariants are references; a duplicate number defeats the
+    # reference, so it is an error.  Unnumbered entries stay valid.
+    if $inv.defined {
+        my %first-line;
+        for $inv.items -> $item {
+            my $n = invariant-number($item.text);
+            next without $n;
+            with %first-line{$n} -> $at {
+                self!problem($item.line, "duplicate invariant number '$n' (first used at line $at)");
+            }
+            else { %first-line{$n} = $item.line }
+        }
+    }
 }
 
 #| Whitespace-insensitive comparison for canonical text (entries are

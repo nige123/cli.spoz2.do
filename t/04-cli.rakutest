@@ -2,7 +2,7 @@ use lib $?FILE.IO.parent.add('lib').Str;
 use Test;
 use SPOZ2Test;
 
-plan 23;
+plan 24;
 
 # Never let a test reach a real agent.
 %*ENV<SPOZ2_AGENT_CMD> = 'false';
@@ -27,6 +27,8 @@ like $out, /^ 'SPOZ2:' \d+ ': gist is still the placeholder' /, 'check reports l
 is $out, "Set gist.\n", 'add gist output';
 ($rc, $out, $err) = spoz2($dir, 'add', 'invariant', 'Always.');
 is $out, "Added invariant.\n", 'add invariant output';
+($rc, $out, $err) = spoz2($dir, 'show', 'invariant', '1');
+is ($rc, $out), (0, "Invariant 1: Always.\n"), 'show invariant N resolves the reference';
 ($rc, $out, $err) = spoz2($dir, 'check');
 ok $rc == 0 && $out.contains('invariant zero:') && $out.ends-with("OK SPOZ2\n"),
     'check passes and reports the invariant-zero binding';

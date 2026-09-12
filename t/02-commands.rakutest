@@ -4,7 +4,7 @@ use SPOZ2Test;
 use SPOZ2;
 use SPOZ2::Document;
 
-plan 37;
+plan 43;
 
 my $dir = temp-dir;
 
@@ -33,8 +33,9 @@ add-entry($path, 'reference', 'eu-cra: Article 13');
 my $doc = check-doc($path);
 ok $doc.ok, 'document valid after adds';
 is $doc.section('invariants').items».text,
-    (INVARIANT-ZERO, 'Only one active session may exist per user.', 'Second invariant.'),
-    'add invariant appends in order after the seeded invariant zero';
+    (INVARIANT-ZERO, 'Invariant 1: Only one active session may exist per user.',
+     'Invariant 2: Second invariant.'),
+    'add invariant numbers entries and appends after the seeded invariant zero';
 is $doc.section('behaviours').items».text, ('A user can request a sign-in code by email.',), 'add behaviour works';
 is $doc.section('constraints').items».text, ('Must work without client-side JavaScript.',), 'add constraint works';
 is $doc.section('references').items».text, ('eu-cra: Article 13',), 'add reference works';
@@ -71,8 +72,22 @@ is $mini.slurp, "SPOZ2 0.0\n\ngist:\n    Mini.\n\nbehaviours:\n    - Goes before
 is show-text($path, 'gist'), "Replaced gist.\n", 'show gist';
 my $inv-shown = show-text($path, 'invariants');
 ok $inv-shown.starts-with('- Invariant 0.0: humans first'), 'shown invariants lead with invariant zero';
-like $inv-shown, /'- Only one active session may exist per user.' \n '- Second invariant.'/, 'show list section';
+like $inv-shown, /'- Invariant 1: Only one active session may exist per user.' \n '- Invariant 2: Second invariant.'/, 'show list section';
 is show-text($path), $path.slurp, 'show whole document';
+is show-text($path, 'invariant'), show-text($path, 'invariants'), 'singular section noun works';
+
+# numbered invariants are explicit references
+add-entry($path, 'invariant', 'Invariant 9: Chosen number.');
+is check-doc($path).section('invariants').items[*-1].text, 'Invariant 9: Chosen number.',
+    'an explicit number is respected';
+add-entry($path, 'invariant', 'After nine.');
+is check-doc($path).section('invariants').items[*-1].text, 'Invariant 10: After nine.',
+    'auto-numbering continues after the highest explicit number';
+throws-like { add-entry($path, 'invariant', 'Invariant 9: Clash.') }, X::SPOZ2,
+    message => /"'9' is already used"/, 'a duplicate explicit number is refused';
+is invariant-text($path, '2'), "Invariant 2: Second invariant.\n", 'invariant-text resolves a number';
+throws-like { invariant-text($path, '77') }, X::SPOZ2,
+    message => /'numbered invariants here'/, 'unknown number lists what exists';
 
 # discovery
 my $nested = $dir.add('src/foo/bar');

@@ -168,6 +168,7 @@ spoz2 init [--/agent]              create a SPOZ2 in the current directory (neve
                                    an agent command (SPOZ2_AGENT_CMD, default `claude -p`)
                                    drafts it from the codebase; --/agent writes the scaffold
 spoz2 show [FILE] [SECTION]        print the SPOZ2, or one section (e.g. `spoz2 show gist`)
+spoz2 show invariant N             print the invariant numbered N (e.g. `spoz2 show invariant 3`)
 spoz2 check [FILE]                 validate structure; exit 1 on errors
 spoz2 add KIND TEXT [--file=FILE]  append an entry; KIND is gist, behaviour, invariant,
                                    constraint, decision, direction or reference
@@ -209,7 +210,7 @@ invariants:
       honestly represent what it is, what it knows, what it has done, and
       what remains uncertain. No other entry may weaken or override this
       invariant.
-    - X must always remain true.
+    - Invariant 1: X must always remain true.
 
 constraints:
     - Must run offline.
@@ -241,8 +242,16 @@ Rules:
   reported as a warning, not an error, so the format can grow.
 - A `reference` is a durable pointer to an external authority (a standard, a
   policy, a ticket). SPOZ2 references standards; it does not copy them in.
-- The first invariant is invariant zero (see above); `spoz2 check` warns when
-  it is missing or not first.
+- The first invariant is invariant zero (see above). Omitting its text is
+  legitimate - the binding is inherited from the format version - and
+  `spoz2 check` warns when it is present but misplaced or reworded.
+- Invariants carry stable numbers in their text - `Invariant 3: ...` -
+  following the Invariant 0.0 convention, so humans and agents can refer
+  to them explicitly. `spoz2 add invariant` assigns the next free number
+  automatically (an explicit number is respected), `spoz2 show invariant 3`
+  resolves a reference, and a duplicate number is a `check` error because
+  it defeats the reference. Unnumbered files stay valid; the `0.x` space
+  is reserved for the format's foundation invariants.
 
 `spoz2 add` edits the file in place by inserting lines (word-wrapped at 80
 columns) - it never rewrites your formatting or comments. Your editor remains

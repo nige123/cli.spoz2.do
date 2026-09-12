@@ -1,7 +1,7 @@
 use Test;
 use SPOZ2::Document;
 
-plan 29;
+plan 33;
 
 my $valid = q:to/END/;
     SPOZ2 0.0
@@ -80,3 +80,11 @@ nok $zeroless.warnings.grep(*.Str.contains('invariant zero')),
     'omission draws no warning: the binding is inherited';
 my $zeroed = SPOZ2::Document.parse("SPOZ2 0.0\n\ngist:\n    hi\n\ninvariants:\n    - " ~ INVARIANT-ZERO ~ "\n");
 nok $zeroed.warnings, 'the canonical text in first place is clean';
+
+# numbered invariants: numbers are references, duplicates defeat them
+is invariant-number('Invariant 3: no surprises.'), '3', 'invariant number extracted';
+nok invariant-number('No number here.').defined, 'unnumbered entry has no number';
+my $dupnum = SPOZ2::Document.parse("SPOZ2 0.0\n\ngist:\n    hi\n\ninvariants:\n    - Invariant 3: a.\n    - Invariant 3: b.\n");
+nok $dupnum.ok, 'duplicate invariant number is an error';
+like $dupnum.errors[0].Str, /"duplicate invariant number '3'" .* 'first used at line 7'/,
+    'duplicate number reported with both lines';

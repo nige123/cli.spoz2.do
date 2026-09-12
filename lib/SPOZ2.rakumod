@@ -113,7 +113,10 @@ sub agent-init-draft(IO::Path $dir = $*CWD, Str :$cmd = agent-cmd() --> Str) is 
         the system is FOR, in a few plain sentences.  Fill behaviours (what
         a user can do or observe) and 3 to 7 invariants (the rules someone
         would be upset to see silently broken), each a self-contained '- '
-        entry indented four spaces, wrapped at 80 columns.  The scaffold's
+        entry indented four spaces, wrapped at 80 columns.  Number the
+        project's invariants so they can be referred to explicitly - begin
+        each entry 'Invariant 1:', 'Invariant 2:', and so on; the 0.x
+        space is reserved for the format's foundation.  The scaffold's
         invariants already begin with invariant 0.0 (humans first):
         keep that entry verbatim and first, and add the project's own
         invariants after it.  Add constraints
@@ -185,9 +188,11 @@ sub walk(IO::Path $dir, Int $depth) {
 # ---------------------------------------------------------------- show
 
 #| Text of the whole document, or of one section (dedented body only).
-sub show-text(IO::Path $path, Str $section? --> Str) is export {
+#| A singular noun works too: 'spoz2 show invariant' shows 'invariants'.
+sub show-text(IO::Path $path, Str $section? is copy --> Str) is export {
     my $doc = SPOZ2::Document.load($path);
     without $section { return $doc.source }
+    $section = %NOUN-SECTION{$section} // $section;
 
     my @found = $doc.sections-named($section);
     user-error("no section '$section' in {$path.basename}") unless @found;
@@ -201,6 +206,22 @@ sub show-text(IO::Path $path, Str $section? --> Str) is export {
         @out.append: @body.map({ .starts-with($indent) ?? .substr($indent.chars) !! .trim-leading });
     }
     @out.join("\n") ~ "\n";
+}
+
+#| One invariant, found by its explicit number ('3', 'Invariant 3' and
+#| '3:' all work), wrapped for the terminal.
+sub invariant-text(IO::Path $path, Str $number --> Str) is export {
+    my $doc = SPOZ2::Document.load($path);
+    my $inv = $doc.section('invariants')
+        // user-error("no invariants section in {$path.basename}");
+    my $n = $number.subst(/^ 'Invariant' \s+ /, '').subst(/ ':' $/, '');
+    with $inv.items.first({ (invariant-number(.text) // '') eq $n }) {
+        return wrap(.text, WRAP-WIDTH).join("\n") ~ "\n";
+    }
+    my @nums = $inv.items.map({ invariant-number(.text) }).grep(*.defined);
+    user-error("no invariant numbered '$n' in {$path.basename}"
+        ~ (@nums ?? "; numbered invariants here: {@nums.join(', ')}"
+                 !! "; none are numbered yet ('Invariant 1: ...' starts the convention)"));
 }
 
 # ---------------------------------------------------------------- check
@@ -223,6 +244,22 @@ sub add-entry(IO::Path $path, Str $noun, Str $text, Bool :$replace = False --> S
     my @found = $doc.sections-named($section);
     user-error("{$path.basename} has more than one '$section:' section; fix it before adding")
         if @found > 1;
+
+    # Invariants carry stable numbers so they can be referred to
+    # explicitly.  New entries get the next free integer automatically;
+    # an explicit number is respected, a duplicate one refused.
+    if $section eq 'invariants' && !is-invariant-zero-text($value) {
+        my @items = @found ?? @found[0].items !! ();
+        my %used  = @items.map({ invariant-number(.text) }).grep(*.defined).map({ $_ => True });
+        with invariant-number($value) -> $n {
+            user-error("invariant number '$n' is already used in {$path.basename}; pick a free one")
+                if %used{$n};
+        }
+        else {
+            my $next = 1 + (0, |%used.keys.map({ .split('.')[0].Int }).grep(* > 0)).max;
+            $value = "Invariant $next: $value";
+        }
+    }
 
     my @lines = $doc.lines;
     my @new   = entry-lines($section, $value, @found ?? (@found[0].indent // INDENT) !! INDENT);

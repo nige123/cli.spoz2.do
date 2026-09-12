@@ -57,6 +57,12 @@ behaviours:
       status reports spec validity, binding resolution and integration
       state in wording that never claims an agent read anything or that
       software conforms; --strict turns it into a CI check.
+    - Invariants can carry stable numbers ('Invariant 3: ...'), following the
+      Invariant 0.0 convention, so humans and agents can refer to them
+      explicitly: spoz2 add invariant numbers new entries automatically
+      (explicit numbers respected, duplicates refused), spoz2 show invariant
+      3 resolves a reference, and spoz2 check treats a duplicate number as
+      an error. Unnumbered files stay valid.
     - The CLI installs with one curl command: the installer fetches the code,
       fetches the runtime too when it is missing (into the user's home,
       nothing system-wide), links spoz2 onto the PATH and verifies it runs.
@@ -78,22 +84,25 @@ invariants:
       honestly represent what it is, what it knows, what it has done, and
       what remains uncertain. No other entry may weaken or override this
       invariant.
-    - The open format and the core CLI must not depend on the commercial
-      spoz2.do service; the file belongs to the project.
-    - A SPOZ2 describes intent - what the thing is supposed to do - not merely
-      its current implementation.
-    - External standards and policies are referenced, never copied into a SPOZ2.
-    - Changing intent is allowed; its history matters and lives in Git, not in a
-      separate versioning mechanism.
-    - Deterministic validation (spoz2 check) must not pretend to prove semantic
-      quality; 'valid structure' is not 'good product thinking'.
-    - Humans and AI must be able to understand the format without specialised or
-      proprietary tooling.
-    - The tool never silently overwrites or reformats a user's file: init
-      refuses to overwrite, add inserts lines and keeps existing text and
-      comments.
-    - The root intent file is named SPOZ2 with no extension; further documents
-      use .spoz2; 'spoz2.do' is the product brand and never a filename.
+    - Invariant 1: The open format and the core CLI must not depend on the
+      commercial spoz2.do service; the file belongs to the project.
+    - Invariant 2: A SPOZ2 describes intent - what the thing is supposed to
+      do - not merely its current implementation.
+    - Invariant 3: External standards and policies are referenced, never
+      copied into a SPOZ2.
+    - Invariant 4: Changing intent is allowed; its history matters and lives
+      in Git, not in a separate versioning mechanism.
+    - Invariant 5: Deterministic validation (spoz2 check) must not pretend to
+      prove semantic quality; 'valid structure' is not 'good product
+      thinking'.
+    - Invariant 6: Humans and AI must be able to understand the format
+      without specialised or proprietary tooling.
+    - Invariant 7: The tool never silently overwrites or reformats a user's
+      file: init refuses to overwrite, add inserts lines and keeps existing
+      text and comments.
+    - Invariant 8: The root intent file is named SPOZ2 with no extension;
+      further documents use .spoz2; 'spoz2.do' is the product brand and
+      never a filename.
 
 constraints:
     - Implemented in straightforward Raku using core modules only; the only
@@ -120,6 +129,16 @@ constraints:
       x86-only assumptions.
 
 decisions:
+    - 2026-09-12: Invariants are numbered so they can be referred to
+      explicitly (user ruling). The number lives in the entry text -
+      'Invariant 3: ...' - following the Invariant 0.0 convention, so the
+      grammar is unchanged and unnumbered files stay valid: check never
+      nags them, and numbers appear as entries are added. add assigns the
+      next free integer automatically, show invariant N resolves a
+      reference, duplicate numbers are check errors because they defeat
+      the reference, the agent-drafting prompt asks for numbered
+      invariants, and the 0.x space stays reserved for the format's
+      foundation. This file's own invariants are now numbered 1 to 8.
     - 2026-09-11: The CLI works across architectures (user ruling). The code
       needed nothing - Raku is architecture-independent - so the work is at
       the edges: the installer falls back from a prebuilt runtime download

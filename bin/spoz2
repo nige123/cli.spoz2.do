@@ -22,6 +22,7 @@ sub USAGE() {
                                             --/agents: skip the entry points;
                                             --agents: install all of them)
       spoz2 show [FILE] [SECTION]        print the SPOZ2, or one section
+      spoz2 show invariant N             print the invariant numbered N
       spoz2 check [FILE]                 validate structure (exit 1 on errors)
       spoz2 add KIND TEXT [--file=FILE]  add an entry; KIND is one of
                                            gist behaviour invariant constraint decision
@@ -102,6 +103,13 @@ multi MAIN('init', Bool :$agent = True, Bool :$agents) {
             say "$_: {install-agent-section($root.add($_), :$root)}" for @sections;
             say "{SKILL-PATH}: {install-skill(:$root)}" if $agents === True || $root.add('.claude').d;
         }
+        0;
+    }
+}
+
+multi MAIN('show', 'invariant', Str $number, Str :$file) {
+    attempt {
+        print invariant-text(resolve-target($file), $number);
         0;
     }
 }
