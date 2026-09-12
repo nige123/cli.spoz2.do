@@ -9,7 +9,7 @@ use lib $?FILE.IO.parent.add('lib').Str;
 use SPOZ2::Document;
 use SPOZ2Test;
 
-plan 12;
+plan 13;
 
 my $g = "gist:\n    hi\n";
 
@@ -28,19 +28,22 @@ my $match = SPOZ2::Document.parse("SPOZ2 0.0\n\n$g\ninvariants:\n    - " ~ INVAR
 nok $match.warnings, 'the canonical text repeated verbatim draws no warning';
 like $match.invariant-zero-status, /'matches the canonical SPOZ2 0.0 text'/,
     'status reports a verified local match';
-like INVARIANT-ZERO, /^ 'Invariant 0.0: humans first.' /,
-    'the canonical headline is HUMANS FIRST under the 0.0 designation';
+ok INVARIANT-ZERO.starts-with('Invariant 0: humans first.'),
+    'the canonical headline is HUMANS FIRST under the plain 0 designation';
 
-my $drift = SPOZ2::Document.parse("SPOZ2 0.0\n\n$g\ninvariants:\n    - Invariant 0.0: humans first. But reworded weakly.\n");
+my $drift = SPOZ2::Document.parse("SPOZ2 0.0\n\n$g\ninvariants:\n    - Invariant 0: humans first. But reworded weakly.\n");
 ok $drift.warnings.grep(*.Str.contains('differs from the canonical')),
     'a reworded invariant zero is flagged as differing from canonical';
 like $drift.invariant-zero-status, /'binds regardless'/,
     'status says the canonical text binds despite local drift';
 
-# legacy designation is still recognised as invariant zero (and flagged)
+# older designations are still recognised as invariant zero (and flagged)
 my $legacy = SPOZ2::Document.parse("SPOZ2 0.0\n\n$g\ninvariants:\n    - Invariant zero: humans come first. Old spelling.\n");
 ok $legacy.warnings.grep(*.Str.contains('differs from the canonical')),
-    'the legacy Invariant zero designation is recognised and flagged';
+    'the frozen Invariant zero designation is recognised and flagged';
+my $dotted = SPOZ2::Document.parse("SPOZ2 0.0\n\n$g\ninvariants:\n    - Invariant 0.0: humans first. Dotted era.\n");
+ok $dotted.warnings.grep(*.Str.contains('differs from the canonical')),
+    'the dotted Invariant 0.0 designation is recognised and flagged';
 
 # --- the published digest matches the canonical bytes --------------------
 my $canon-file = temp-dir.add('canonical.txt');

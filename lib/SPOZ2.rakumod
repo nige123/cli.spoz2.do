@@ -115,8 +115,8 @@ sub agent-init-draft(IO::Path $dir = $*CWD, Str :$cmd = agent-cmd() --> Str) is 
         would be upset to see silently broken), each a self-contained '- '
         entry indented four spaces, wrapped at 80 columns.  Number the
         project's invariants so they can be referred to explicitly - begin
-        each entry 'Invariant 1:', 'Invariant 2:', and so on; the 0.x
-        space is reserved for the format's foundation.  The scaffold's
+        each entry 'Invariant 1:', 'Invariant 2:', and so on; Invariant 0
+        is the format's foundation and already present.  The scaffold's
         invariants already begin with invariant 0.0 (humans first):
         keep that entry verbatim and first, and add the project's own
         invariants after it.  Add constraints
@@ -256,7 +256,7 @@ sub add-entry(IO::Path $path, Str $noun, Str $text, Bool :$replace = False --> S
                 if %used{$n};
         }
         else {
-            my $next = 1 + (0, |%used.keys.map({ .split('.')[0].Int }).grep(* > 0)).max;
+            my $next = 1 + (0, |%used.keys.map(*.Int)).max;
             $value = "Invariant $next: $value";
         }
     }

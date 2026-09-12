@@ -46,7 +46,7 @@ The canonical text for **SPOZ2 0.0** (the in-development format version):
 
 ```text
 invariants:
-    - Invariant 0.0: humans first. This software exists to help humans
+    - Invariant 0: humans first. This software exists to help humans
       thrive and respect each person's dignity. It must not cause or assist
       harm to people; no claimed greater good makes a person disposable. It
       must preserve meaningful human oversight: people can understand its
@@ -66,7 +66,7 @@ current canonical text's sha256 (exact one-line UTF-8 text, no trailing
 newline):
 
 ```text
-d072a03f407dc76d63c84c5fc278b2e23cf5527873d32d7e4323763874f56605
+df43776d2c4dc89b22f74a9658f5d6920ee498e5a32d8738ce2134ba2146dd06
 ```
 
 From the first release onward, each version publishes a frozen canonical
@@ -201,7 +201,7 @@ behaviours:
       onto a continuation line.
 
 invariants:
-    - Invariant 0.0: humans first. This software exists to help humans
+    - Invariant 0: humans first. This software exists to help humans
       thrive and respect each person's dignity. It must not cause or assist
       harm to people; no claimed greater good makes a person disposable. It
       must preserve meaningful human oversight: people can understand its
@@ -246,12 +246,13 @@ Rules:
   legitimate - the binding is inherited from the format version - and
   `spoz2 check` warns when it is present but misplaced or reworded.
 - Invariants carry stable numbers in their text - `Invariant 3: ...` -
-  following the Invariant 0.0 convention, so humans and agents can refer
-  to them explicitly. `spoz2 add invariant` assigns the next free number
-  automatically (an explicit number is respected), `spoz2 show invariant 3`
-  resolves a reference, and a duplicate number is a `check` error because
-  it defeats the reference. Unnumbered files stay valid; the `0.x` space
-  is reserved for the format's foundation invariants.
+  plain monotonic integers, so humans and agents can refer to them
+  explicitly: `Invariant 0` is the foundation invariant and project
+  invariants start at 1. `spoz2 add invariant` assigns the next free
+  number automatically (an explicit number is respected),
+  `spoz2 show invariant 3` resolves a reference, and a duplicate number
+  is a `check` error because it defeats the reference. Unnumbered files
+  stay valid.
 
 `spoz2 add` edits the file in place by inserting lines (word-wrapped at 80
 columns) - it never rewrites your formatting or comments. Your editor remains

@@ -71,7 +71,7 @@ is $mini.slurp, "SPOZ2 0.0\n\ngist:\n    Mini.\n\nbehaviours:\n    - Goes before
 # show
 is show-text($path, 'gist'), "Replaced gist.\n", 'show gist';
 my $inv-shown = show-text($path, 'invariants');
-ok $inv-shown.starts-with('- Invariant 0.0: humans first'), 'shown invariants lead with invariant zero';
+ok $inv-shown.starts-with('- Invariant 0: humans first'), 'shown invariants lead with invariant zero';
 like $inv-shown, /'- Invariant 1: Only one active session may exist per user.' \n '- Invariant 2: Second invariant.'/, 'show list section';
 is show-text($path), $path.slurp, 'show whole document';
 is show-text($path, 'invariant'), show-text($path, 'invariants'), 'singular section noun works';

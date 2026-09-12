@@ -19,7 +19,7 @@ constant GIST-PLACEHOLDER is export = '<What is this thing supposed to do?>';
 #| `check` verifies the binding and any locally repeated text.  The
 #| digest identifies the adopted text, nothing more: stating a rule, or
 #| hashing it, does not make software obey it.
-constant INVARIANT-ZERO is export = 'Invariant 0.0: humans first. '
+constant INVARIANT-ZERO is export = 'Invariant 0: humans first. '
     ~ 'This software exists to help humans thrive and respect each '
     ~ "person's dignity. It must not cause or assist harm to people; no "
     ~ 'claimed greater good makes a person disposable. It must preserve '
@@ -31,26 +31,29 @@ constant INVARIANT-ZERO is export = 'Invariant 0.0: humans first. '
 
 #| sha256 of the exact one-line UTF-8 canonical text, no trailing newline.
 constant INVARIANT-ZERO-DIGEST is export =
-    'd072a03f407dc76d63c84c5fc278b2e23cf5527873d32d7e4323763874f56605';
+    'df43776d2c4dc89b22f74a9658f5d6920ee498e5a32d8738ce2134ba2146dd06';
 
 #| The short teaching version, for pages and slides, never for files.
 constant INVARIANT-ZERO-SHORT is export =
     'Help humans thrive. Keep humans in charge. Never fake it.';
 
 #| The designations that identify invariant zero, however the rest is
-#| worded: 'Invariant 0.0:' (0.3+) and the frozen 'Invariant zero:'
-#| spelling (0.1/0.2).
-constant INVARIANT-ZERO-LEAD is export = 'Invariant 0.0:';
+#| worded: 'Invariant 0:' now, plus the older 'Invariant 0.0:' and the
+#| frozen 'Invariant zero:' spellings still found in existing files.
+constant INVARIANT-ZERO-LEAD is export = 'Invariant 0:';
+constant INVARIANT-ZERO-LEAD-DOTTED is export = 'Invariant 0.0:';
 constant INVARIANT-ZERO-LEAD-LEGACY is export = 'Invariant zero:';
 sub is-invariant-zero-text(Str $t --> Bool) is export {
-    $t.starts-with(INVARIANT-ZERO-LEAD) || $t.starts-with(INVARIANT-ZERO-LEAD-LEGACY)
+    $t.starts-with(INVARIANT-ZERO-LEAD)
+        || $t.starts-with(INVARIANT-ZERO-LEAD-DOTTED)
+        || $t.starts-with(INVARIANT-ZERO-LEAD-LEGACY)
 }
 
 #| The explicit number of an invariant entry ('Invariant 3: ...' gives
-#| '3'), or Str when the entry is unnumbered.  Numbers make invariants
-#| referable; the 0.x space is reserved for the format's foundation.
+#| '3'), or Str when the entry is unnumbered.  Numbers are plain
+#| monotonic integers; 0 is the format's foundation invariant.
 sub invariant-number(Str $t --> Str) is export {
-    $t ~~ /^ 'Invariant ' (\d+ ['.' \d+]*) ':' / ?? ~$0 !! Str;
+    $t ~~ /^ 'Invariant ' (\d+) ':' / ?? ~$0 !! Str;
 }
 
 #| Known top-level sections, in canonical order, with their kind.

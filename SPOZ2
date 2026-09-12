@@ -57,12 +57,12 @@ behaviours:
       status reports spec validity, binding resolution and integration
       state in wording that never claims an agent read anything or that
       software conforms; --strict turns it into a CI check.
-    - Invariants can carry stable numbers ('Invariant 3: ...'), following the
-      Invariant 0.0 convention, so humans and agents can refer to them
-      explicitly: spoz2 add invariant numbers new entries automatically
-      (explicit numbers respected, duplicates refused), spoz2 show invariant
-      3 resolves a reference, and spoz2 check treats a duplicate number as
-      an error. Unnumbered files stay valid.
+    - Invariants carry stable, plain monotonic numbers ('Invariant 3: ...')
+      so humans and agents can refer to them explicitly: Invariant 0 is the
+      foundation, project invariants start at 1, spoz2 add invariant numbers
+      new entries automatically (explicit numbers respected, duplicates
+      refused), spoz2 show invariant 3 resolves a reference, and spoz2 check
+      treats a duplicate number as an error. Unnumbered files stay valid.
     - The CLI installs with one curl command: the installer fetches the code,
       fetches the runtime too when it is missing (into the user's home,
       nothing system-wide), links spoz2 onto the PATH and verifies it runs.
@@ -75,7 +75,7 @@ behaviours:
       published by that workflow; distribution is a separate decision.
 
 invariants:
-    - Invariant 0.0: humans first. This software exists to help humans
+    - Invariant 0: humans first. This software exists to help humans
       thrive and respect each person's dignity. It must not cause or assist
       harm to people; no claimed greater good makes a person disposable. It
       must preserve meaningful human oversight: people can understand its
@@ -129,6 +129,14 @@ constraints:
       x86-only assumptions.
 
 decisions:
+    - 2026-09-12: Invariant numbers are plain monotonic integers (user
+      ruling: the dotted 0.0 just adds complexity). The foundation
+      invariant is 'Invariant 0'; there is no dotted numbering and no
+      reserved 0.x space, and project invariants start at 1. Format 0.0 is
+      still in development, so the canonical text and digest changed in
+      place (sha256 df43776d2c4d...); the tool still recognises the older
+      'Invariant 0.0:' and frozen 'Invariant zero:' leads in existing
+      files, which check flags as drift that binds regardless.
     - 2026-09-12: Invariants are numbered so they can be referred to
       explicitly (user ruling). The number lives in the entry text -
       'Invariant 3: ...' - following the Invariant 0.0 convention, so the
